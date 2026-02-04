@@ -1,0 +1,121 @@
+enum PrintStatus {
+  PENDING
+  OK
+  ERROR
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  categoryId String
+  name       String
+  basePrice  Int      @default(0) // en centavos para evitar floats
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id])
+}
+
+model User {
+  id          String   @id @default(cuid())
+  displayName String
+  role        UserRole @default(OPERARIO)
+  pinHash     String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ordersCreated     Order[]         @relation("OrderCreatedBy")
+  ordersVoided      Order[]         @relation("OrderVoidedBy")
+  ordersLastPrinted Order[]         @relation("OrderLastPrintedBy")
+  orderPrintLogs    OrderPrintLog[]
+}
+
+enum UserRole {
+  OPERARIO
+  ADMIN
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  orderNumber Int
+  createdAt   DateTime @default(now())
+
+  createdByUserId String
+  createdByUser   User   @relation("OrderCreatedBy", fields: [createdByUserId], references: [id])
+
+  notes String?
+  total Int     @default(0)
+
+  printedAt           DateTime?
+  printStatus         PrintStatus @default(PENDING)
+  printerName         String?
+  printError          String?
+  lastPrintedByUserId String?
+  lastPrintedByUser   User?       @relation("OrderLastPrintedBy", fields: [lastPrintedByUserId], references: [id])
+
+  isVoided       Boolean   @default(false)
+  voidedByUserId String?
+  voidedByUser   User?     @relation("OrderVoidedBy", fields: [voidedByUserId], references: [id])
+  voidedAt       DateTime?
+  voidReason     String?
+
+  items          OrderItem[]
+  orderPrintLogs OrderPrintLog[]
+
+  @@unique([orderNumber])
+  @@index([createdAt])
+  @@index([createdByUserId])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId           String? // opcional: si el producto se desactiva/elimina, el snapshot sigue
+  productNameSnapshot String
+  unitPriceSnapshot   Int // centavos
+  quantity            Int
+  subtotalSnapshot    Int // centavos
+  notes               String?
+
+  @@index([orderId])
+}
+
+model OrderPrintLog {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  success      Boolean
+  printerName  String?
+  errorMessage String?
+  printedAt    DateTime @default(now())
+
+  performedByUserId String
+  performedByUser   User   @relation(fields: [performedByUserId], references: [id])
+
+  @@index([orderId])
+  @@index([printedAt])
+}

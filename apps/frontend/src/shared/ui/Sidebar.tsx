@@ -1,3 +1,5 @@
+// src\shared\ui\Sidebar.tsx
+
 import {
     FaHome,
     FaThLarge,

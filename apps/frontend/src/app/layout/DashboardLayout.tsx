@@ -1,3 +1,5 @@
+// src\app\layout\DashboardLayout.tsxz
+
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "@/shared/ui/Sidebar";
 import { useAuth } from "@/app/providers/AuthProviders"; // ajusta el path real
@@ -12,7 +14,7 @@ export default function DashboardLayout() {
     if (!user) return <Outlet />;
 
     return (
-        <div className="flex h-screen bg-red-100">
+        <div className="flex h-screen w-screen  border">
             <Sidebar
                 activePath={location.pathname}
                 role={user.role}

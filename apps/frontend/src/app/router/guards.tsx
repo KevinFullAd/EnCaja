@@ -1,3 +1,5 @@
+// EnCaja\apps\frontend\src\app\router\guards.tsx
+
 import React from "react";
 import { Navigate } from "react-router-dom";
 import type { Role } from "@/entities/user/model/types";

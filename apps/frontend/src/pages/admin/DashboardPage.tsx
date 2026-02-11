@@ -1,14 +1,27 @@
-// src/pages/admin/DashboardPage.tsx
-import React from "react"
-import { useAuth } from "@/app/providers/AuthProviders"
-import POSPage from "../operario/POSPage"
+import { useNavigate } from "react-router-dom";
 
 export default function DashboardPage() {
-    const { user, logout } = useAuth()
+    const navigate = useNavigate();
 
     return (
-        <div className="h-screen p-6">
-            <POSPage />
+        <div className="p-6">
+            <h1 className="text-xl font-semibold">Admin</h1>
+
+            <div className="mt-6 flex gap-3">
+                <button
+                    onClick={() => navigate("/admin/products")}
+                    className="rounded-xl px-4 py-2 bg-violet-600 text-white"
+                >
+                    Catálogo (Productos)
+                </button>
+
+                <button
+                    onClick={() => navigate("/operario/pos")}
+                    className="rounded-xl px-4 py-2 bg-gray-900 text-white"
+                >
+                    Ir a POS
+                </button>
+            </div>
         </div>
-    )
+    );
 }

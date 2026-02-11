@@ -1,3 +1,5 @@
+// EnCaja\apps\frontend\src\app\router\routes.tsx
+
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import DashboardLayout from "../layout/DashboardLayout";
@@ -6,6 +8,9 @@ import NotFoundPage from "@/pages/system/NotFoundPage";
 
 import POSPage from "@/pages/operario/POSPage";
 import DashboardPage from "@/pages/admin/DashboardPage";
+import ProductsPage from "@/pages/admin/ProductsPage";
+import ProductNewPage from "@/pages/admin/ProductsNewPage";
+
 
 import { AuthGuard, RoleGuard } from "@/app/router/guards";
 
@@ -41,6 +46,24 @@ export default function AppRoutes() {
                     element={
                         <RoleGuard allow={["ADMIN"]}>
                             <DashboardPage />
+                        </RoleGuard>
+                    }
+                />
+
+                <Route
+                    path="/admin/products"
+                    element={
+                        <RoleGuard allow={["ADMIN"]}>
+                            <ProductsPage />
+                        </RoleGuard>
+                    }
+                />
+
+                <Route
+                    path="/admin/products/new"
+                    element={
+                        <RoleGuard allow={["ADMIN"]}>
+                            <ProductNewPage />
                         </RoleGuard>
                     }
                 />

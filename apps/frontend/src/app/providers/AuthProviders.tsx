@@ -1,3 +1,5 @@
+// EnCaja\apps\frontend\src\app\providers\AuthProviders.tsx
+
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import type { Role, User } from "@/entities/user/model/types"
 import { loginWithPin } from "@/features/auth/api/auth.api"
@@ -50,8 +52,6 @@ function userFromTokenOrNull(token: string): User | null {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [state, setState] = useState<AuthState>(() => initialAuthState)
 
-    // Bootstrap: si hay token guardado, decodificarlo y restaurar user
-    // Bootstrap: si hay token guardado, decodificarlo y restaurar user
     useEffect(() => {
         if (!state.token) {
             setState((p) => ({ ...p, status: "unauthenticated", user: null }));
@@ -66,8 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setState((p) => ({ ...p, status: "authenticated", user: u }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [state.token]);
+
 
 
     const login = useCallback(async (pin: string) => {

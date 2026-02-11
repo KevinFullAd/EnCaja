@@ -1,9 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { CreateProductoDto } from './dto/create-producto.dto';
 
 @Injectable()
 export class CatalogoService {
     constructor(private readonly prisma: PrismaService) { }
+
+    crearProducto(dto: CreateProductoDto) {
+        return this.prisma.product.create({
+            data: {
+                categoryId: dto.categoryId,
+                name: dto.name,
+                basePrice: dto.basePrice,
+                isActive: true,
+            },
+            select: { id: true, categoryId: true, name: true, basePrice: true },
+        });
+    }
 
     categorias() {
         return this.prisma.category.findMany({

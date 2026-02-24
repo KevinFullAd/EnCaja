@@ -1,0 +1,1 @@
+export const CATEGORIES = ["Cakes", "Pastry", "Ice Cream", "Pancakes", "Vegan", "Cookies"];

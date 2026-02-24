@@ -1,0 +1,79 @@
+############################
+# Node / General
+############################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+############################
+# Environment
+############################
+.env
+.env.*
+!.env.example
+
+############################
+# Logs
+############################
+logs/
+*.log
+
+############################
+# OS
+############################
+.DS_Store
+Thumbs.db
+
+############################
+# IDE
+############################
+.vscode/
+.idea/
+*.swp
+
+############################
+# Build outputs
+############################
+dist/
+build/
+out/
+
+############################
+# Frontend
+############################
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/build/
+
+############################
+# Backend (Nest)
+############################
+backend/node_modules/
+backend/dist/
+backend/.nestjs/
+
+############################
+# Prisma / SQLite
+############################
+backend/prisma/data/dev.db
+backend/prisma/*.db 
+backend/prisma/migrations/*
+
+############################
+# Electron
+############################
+electron/node_modules/
+electron/dist/
+release/
+*.asar
+
+############################
+# Electron Builder (si lo usás luego)
+############################
+dist_electron/

@@ -1,9 +1,9 @@
 import { create } from "zustand";
 
 export const useUIStore = create((set) => ({
-    activeCategory: "Cakes",
+    activeCategoryId: "all",
     searchQuery: "",
-
-    setActiveCategory: (cat) => set({ activeCategory: cat }),
+    
+    setActiveCategory: (id) => set({ activeCategoryId: id }),
     setSearchQuery: (q) => set({ searchQuery: q }),
 }));

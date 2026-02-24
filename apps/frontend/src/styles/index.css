@@ -1,1 +1,60 @@
 @import "tailwindcss";
+
+:root {
+    --app-bg: #f7f7fb;
+    --app-surface: #ffffff;
+    --app-text: #111827;
+    --app-muted: #6b7280;
+    --app-border: #e5e7eb;
+}
+
+:root[data-theme="dark"] {
+    --app-bg: #0b1220;
+    --app-surface: #0f172a;
+    --app-text: #e5e7eb;
+    --app-muted: #94a3b8;
+    --app-border: #1f2a44;
+}
+
+@layer components {
+
+  /* Ancho */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* Track */
+  ::-webkit-scrollbar-track {
+    background: var(--app-bg);
+    border-radius: 4px;
+  }
+
+  /* Thumb */
+  ::-webkit-scrollbar-thumb {
+    background: var(--app-border);
+    border-radius: 4px;
+  }
+
+  /* Hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--app-muted);
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-border) var(--app-bg);
+  }
+}
+
+/* Aplicación global */
+html,
+body {
+    height: 100%;
+}
+
+body {
+    background: var(--app-bg);
+    color: var(--app-text);
+}

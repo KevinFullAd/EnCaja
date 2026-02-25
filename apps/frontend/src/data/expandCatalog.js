@@ -1,37 +1,30 @@
-
-const CURRENCY = "ARS";
-
-export function expandCatalogToProducts(catalog) {
+export function expandFamiliesToProducts(families) {
     const out = [];
 
-    for (const base of catalog) {
-        if (base.active === false) continue;
+    for (const fam of families ?? []) {
+        if (fam.isActive === false) continue;
 
-        const baseImage = base.imageUrl;
+        for (const flavor of fam.flavors ?? []) {
+            if (flavor.isActive === false) continue;
 
-        for (const flavor of base.flavors || []) {
-            if (flavor.active === false) continue;
+            for (const variant of flavor.variants ?? []) {
+                if (variant.isActive === false) continue;
 
-            for (const variant of flavor.variants || []) {
-                if (variant.active === false) continue;
+                const suffix = (flavor.nameSuffix ?? "").trim();
+                const label = (variant.label ?? "").trim();
 
-                const label = (variant.label || "").trim();
-                const suffix = (flavor.nameSuffix || "").trim();
+                const name = `${fam.name} ${suffix} ${label}`.replace(/\s+/g, " ").trim();
 
                 out.push({
-                    id: `${base.id}-${flavor.id}-${variant.id}`.replace(/-default-/g, "-"),
-                    categoryId: base.categoryId,
-                    name: `${base.name} ${suffix} ${label}`.replace(/\s+/g, " ").trim(),
-                    description: flavor.description || "",
+                    id: variant.id, 
+                    categoryId: fam.categoryId,
+                    name,
+                    description: flavor.description ?? "",
                     priceCents: variant.priceCents,
-                    currency: CURRENCY,
-                    imageUrl: variant.imageUrl || baseImage || "",
-                    active: true,
-
-                    // metadatos útiles para BD / carrito
-                    baseId: base.id,
-                    flavorId: flavor.id,
-                    variantId: variant.id,
+                    currency: variant.currency ?? "ARS",
+                    imageUrl: variant.imageUrl ?? fam.imageUrl ?? undefined,
+                    active: variant.isActive !== false,
+                    kind: "burger",
                 });
             }
         }

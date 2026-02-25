@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Grid, Settings, User, Expand,Minimize, Sun, Moon } from "lucide-react";
+import { Grid, Settings, User,Package, Expand,Minimize, Sun, Moon } from "lucide-react";
 import { useTheme } from "../../app/provider/ThemeProvider";
 import { useState } from "react";
 
 const navItems = [
     { to: "/items", icon: Grid, label: "items" },
+    { to: "/admin/catalog", icon: Package, label: "admin" },
     { to: "/users", icon: User, label: "users" },
     { to: "/settings", icon: Settings, label: "settings" },
 ];

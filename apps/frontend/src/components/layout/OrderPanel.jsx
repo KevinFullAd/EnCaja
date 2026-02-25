@@ -59,7 +59,7 @@ export default function OrderPanel() {
     }, [items]);
 
     return (
-        <aside className="w-80 shrink-0 bg-(--app-surface) border-l border-(--app-border) flex flex-col h-full">
+        <aside className="shrink-0 bg-(--app-surface) border-l border-(--app-border) flex flex-col h-full">
             <div className="px-5 pt-5 pb-3">
                 <h2 className="text-lg font-bold text-(--app-text)">Current Order</h2>
 

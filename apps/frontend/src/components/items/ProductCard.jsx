@@ -13,16 +13,21 @@ function formatMoneyFromCents(priceCents, currency = "ARS") {
 
 function formatMoneyFromFloat(price) {
   if (typeof price !== "number") return "—";
+  // fallback legacy, no recomendado a futuro
   return "£" + price.toFixed(2).replace(".", ",");
 }
 
 export default function ProductCard({ product }) {
   const add = useOrderStore((s) => s.add);
 
+  const currency = product.currency ?? "ARS";
+
   const priceLabel =
     typeof product.priceCents === "number"
-      ? formatMoneyFromCents(product.priceCents, product.currency ?? "ARS")
+      ? formatMoneyFromCents(product.priceCents, currency)
       : formatMoneyFromFloat(product.price);
+
+  const imageSrc = product.imageUrl ?? product.image;
 
   return (
     <div className="flex flex-col gap-2">
@@ -33,7 +38,7 @@ export default function ProductCard({ product }) {
         }
       >
         <img
-          src={product.imageUrl ?? product.image}
+          src={imageSrc}
           alt={product.name}
           className="w-full h-full object-cover"
         />
@@ -48,16 +53,15 @@ export default function ProductCard({ product }) {
         <button
           onClick={() =>
             add({
-              id: product.id,
+              id: product.id, // variantId real
               name: product.name,
-              // guardar en cents como base; si viene float, lo convertimos
               priceCents:
                 typeof product.priceCents === "number"
                   ? product.priceCents
                   : typeof product.price === "number"
                     ? Math.round(product.price * 100)
                     : 0,
-              imageUrl: product.imageUrl ?? product.image,
+              imageUrl: imageSrc,
             })
           }
           className="w-7 h-7 rounded-full border-2 border-purple-600 flex items-center justify-center hover:bg-purple-50 transition-colors"

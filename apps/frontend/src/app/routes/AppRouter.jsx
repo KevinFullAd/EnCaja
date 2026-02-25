@@ -6,12 +6,14 @@ import ItemsPage from "../../pages/ItemsPage";
 import UsersPage from "../../pages/UsersPage";
 import SettingsPage from "../../pages/SettingsPage";
 import NotFoundPage from "../../pages/NotFoundPage";
+import AdminCatalog from "../../pages/admin/AdminCatalog";
 
 export default function AppRouter() {
     return (
         <Routes>
             <Route element={<Layout />}>
                 <Route path="/" element={<Navigate to={PATHS.ITEMS} replace />} />
+                <Route path={PATHS.ADMIN_CATALOG} element={<AdminCatalog />} />
                 <Route path={PATHS.ITEMS} element={<ItemsPage />} />
                 <Route path={PATHS.USERS} element={<UsersPage />} />
                 <Route path={PATHS.SETTINGS} element={<SettingsPage />} />

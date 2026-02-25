@@ -1,39 +1,87 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../infra/prisma/prisma.service';
-import { CreateProductoDto } from './dto/create-producto.dto';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../infra/prisma/prisma.service";
+import { CreateCategoryDto } from "./dto/create-categoria.dto";
+import { CreateProductFamilyDto } from "./dto/create-producto.dto";
 
 @Injectable()
 export class CatalogoService {
     constructor(private readonly prisma: PrismaService) { }
 
-    crearProducto(dto: CreateProductoDto) {
-        return this.prisma.product.create({
+    // ======================
+    // CATEGORIAS
+    // ======================
+
+    crearCategoria(dto: CreateCategoryDto) {
+        return this.prisma.category.create({
             data: {
-                categoryId: dto.categoryId,
+                slug: dto.slug,
                 name: dto.name,
-                basePrice: dto.basePrice,
-                isActive: true,
+                sortOrder: dto.sortOrder ?? 0,
             },
-            select: { id: true, categoryId: true, name: true, basePrice: true },
         });
     }
 
     categorias() {
         return this.prisma.category.findMany({
             where: { isActive: true },
-            orderBy: { sortOrder: 'asc' },
-            select: { id: true, name: true, sortOrder: true },
+            orderBy: { sortOrder: "asc" },
         });
     }
 
-    productos(categoriaId?: string) {
-        return this.prisma.product.findMany({
-            where: {
-                isActive: true,
-                ...(categoriaId ? { categoryId: categoriaId } : {}),
+    // ======================
+    // PRODUCTOS (familias)
+    // ======================
+
+    crearFamilia(dto: CreateProductFamilyDto) {
+        return this.prisma.productFamily.create({
+            data: {
+                categoryId: dto.categoryId,
+                slug: dto.slug,
+                name: dto.name,
+                imageUrl: dto.imageUrl,
+                sortOrder: dto.sortOrder ?? 0,
+                flavors: {
+                    create: dto.flavors.map((flavor) => ({
+                        slug: flavor.slug,
+                        nameSuffix: flavor.nameSuffix ?? "",
+                        description: flavor.description,
+                        sortOrder: flavor.sortOrder ?? 0,
+                        variants: {
+                            create: flavor.variants.map((variant) => ({
+                                slug: variant.slug,
+                                label: variant.label ?? "",
+                                priceCents: variant.priceCents,
+                                imageUrl: variant.imageUrl,
+                                sortOrder: variant.sortOrder ?? 0,
+                            })),
+                        },
+                    })),
+                },
             },
-            orderBy: { name: 'asc' },
-            select: { id: true, categoryId: true, name: true, basePrice: true },
+            include: {
+                flavors: {
+                    include: {
+                        variants: true,
+                    },
+                },
+            },
+        });
+    }
+
+    familias() {
+        return this.prisma.productFamily.findMany({
+            where: { isActive: true },
+            include: {
+                flavors: {
+                    where: { isActive: true },
+                    include: {
+                        variants: {
+                            where: { isActive: true },
+                        },
+                    },
+                },
+            },
+            orderBy: { sortOrder: "asc" },
         });
     }
 }

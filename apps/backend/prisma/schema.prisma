@@ -13,28 +13,89 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * =========================
+ * CATALOGO
+ * =========================
+ */
+
 model Category {
   id        String   @id @default(cuid())
+  slug      String   @unique
   name      String
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  products Product[]
+  families ProductFamily[]
 }
 
-model Product {
+model ProductFamily {
   id         String   @id @default(cuid())
   categoryId String
-  name       String
-  basePrice  Int      @default(0) // en centavos para evitar floats
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  category   Category @relation(fields: [categoryId], references: [id])
 
-  category Category @relation(fields: [categoryId], references: [id])
+  slug      String  @unique
+  name      String
+  imageUrl  String?
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  flavors ProductFlavor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
 }
+
+model ProductFlavor {
+  id       String        @id @default(cuid())
+  familyId String
+  family   ProductFamily @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  slug        String
+  nameSuffix  String  @default("") // "con nachos"
+  description String?
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  variants ProductVariant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([familyId, slug])
+  @@index([familyId])
+}
+
+model ProductVariant {
+  id       String        @id @default(cuid())
+  flavorId String
+  flavor   ProductFlavor @relation(fields: [flavorId], references: [id], onDelete: Cascade)
+
+  slug       String // simple|doble|triple|unit 
+  label      String  @default("") // "Simple"
+  priceCents Int
+  currency   String  @default("ARS")
+  imageUrl   String?
+  sortOrder  Int     @default(0)
+  isActive   Boolean @default(true)
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+
+  @@unique([flavorId, slug])
+  @@index([flavorId])
+}
+
+/**
+ * =========================
+ * USUARIOS / ORDENES
+ * =========================
+ */
 
 model User {
   id          String   @id @default(cuid())
@@ -93,14 +154,19 @@ model OrderItem {
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  productId           String? // opcional: si el producto se desactiva/elimina, el snapshot sigue
-  productNameSnapshot String
-  unitPriceSnapshot   Int // centavos
-  quantity            Int
-  subtotalSnapshot    Int // centavos
-  notes               String?
+  // Ahora el item apunta a la variante vendible
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  // Snapshot (se mantiene el enfoque)
+  itemNameSnapshot  String
+  unitPriceSnapshot Int
+  quantity          Int
+  subtotalSnapshot  Int
+  notes             String?
 
   @@index([orderId])
+  @@index([variantId])
 }
 
 model OrderPrintLog {

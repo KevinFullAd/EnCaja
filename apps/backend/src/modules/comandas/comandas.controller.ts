@@ -4,6 +4,7 @@ import {
     Controller,
     ForbiddenException,
     Get,
+    HttpCode,
     Param,
     Post,
     Req,
@@ -39,6 +40,7 @@ export class ComandasController {
     }
 
     @Post(':id/print')
+    @HttpCode(200)
     markPrinted(
         @Param('id') id: string,
         @Body()
@@ -66,6 +68,7 @@ export class ComandasController {
     }
 
     @Post(':id/anular')
+    @HttpCode(200)
     void(
         @Param('id') id: string,
         @Body() dto: VoidComandaDto,

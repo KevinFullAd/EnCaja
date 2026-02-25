@@ -1,3 +1,5 @@
+// src/modules/catalogo/dto/producto.dto.ts
+
 export type ProductDto = {
     id: string;
     categoryId: string;

@@ -1,23 +1,33 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
-import { CatalogoService } from './catalogo.service';
-import { CreateProductoDto } from './dto/create-producto.dto';
+import { Controller, Get, Post, Body } from "@nestjs/common";
+import { CatalogoService } from "./catalogo.service";
+import { CreateCategoryDto } from "./dto/create-categoria.dto";
+import { CreateProductFamilyDto } from "./dto/create-producto.dto";
 
-@Controller('api/catalogo')
+@Controller("api/catalogo")
 export class CatalogoController {
     constructor(private readonly service: CatalogoService) { }
 
-    @Get('categorias')
+    // ===== CATEGORIAS =====
+
+    @Get("categorias")
     categorias() {
         return this.service.categorias();
     }
 
-    @Get('productos')
-    productos(@Query('categoriaId') categoriaId?: string) {
-        return this.service.productos(categoriaId);
+    @Post("categorias")
+    crearCategoria(@Body() dto: CreateCategoryDto) {
+        return this.service.crearCategoria(dto);
     }
 
-    @Post('productos')
-    crearProducto(@Body() dto: CreateProductoDto) {
-        return this.service.crearProducto(dto);
+    // ===== PRODUCTOS (familias) =====
+
+    @Post("familias")
+    crearFamilia(@Body() dto: CreateProductFamilyDto) {
+        return this.service.crearFamilia(dto);
+    }
+
+    @Get("familias")
+    familias() {
+        return this.service.familias();
     }
 }

@@ -1,14 +1,21 @@
+// data/categories.js
+
 export const CATEGORIES = [
-    { id: "all", name: "TODAS" },
-    { id: "clasica", name: "CLASICA" },
-    { id: "barbacoa", name: "BARBACOA" },
-    { id: "cheese", name: "CHEESE BURGER" },
-    { id: "crispy", name: "CRISPY" },
-    { id: "cheese-bacon", name: "CHEESE BACON" },
-    { id: "shermi-onion", name: "Shermi-onion" },
-    { id: "pollo-crispy", name: "POLLO CRISPY" },
-    { id: "promociones", name: "PROMOCIONES" },
-    { id: "tequenos", name: "TEQUEÑOS" },
-    { id: "burgers-premium", name: "Burgers Premium" },
-    { id: "extras", name: "EXTRAS" },
+    { id: "all", name: "Todas" },
+
+    // Burgers
+    { id: "clasica", name: "Clásica" },
+    { id: "barbacoa", name: "Barbacoa" },
+    { id: "cheese", name: "Cheese Burger" },
+    { id: "crispy", name: "Crispy" },
+    { id: "cheese_bacon", name: "Cheese Bacon" },
+    { id: "aros", name: "Aros Burger" },
+    { id: "mensual", name: "Mensual" },
+    { id: "pollo-crispy", name: "Pollo Crispy" },
+    { id: "premium", name: "Premium" },
+    { id: "veggie", name: "Veggie" },
+
+    // Otros
+    { id: "extras", name: "Extras" },
+    { id: "tequenos", name: "Tequeños" },
 ];

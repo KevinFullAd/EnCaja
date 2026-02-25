@@ -3,24 +3,26 @@ import CategoryTabs from "../components/items/CategoryTabs";
 import ProductGrid from "../components/items/ProductGrid";
 import { PRODUCTS } from "../data/products";
 import { useUIStore } from "../store/uiStore";
+import Searcher from "../components/items/Searcher";
+
+const normalizeText = (text) =>
+    text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
 
 export default function ItemsPage() {
-    const {
-        activeCategoryId,
-        searchQuery,
-        setSearchQuery,
-        setActiveCategory,
-    } = useUIStore();
+    const { activeCategoryId, searchQuery, setSearchQuery } = useUIStore();
 
     const filteredProducts = useMemo(() => {
-        const q = (searchQuery ?? "").trim().toLowerCase();
+        const q = normalizeText((searchQuery ?? "").trim());
 
         return PRODUCTS
             .filter((p) => p.active !== false)
             .filter((p) => (activeCategoryId === "all" ? true : p.categoryId === activeCategoryId))
             .filter((p) => {
                 if (!q) return true;
-                const hay = `${p.name} ${p.description ?? ""}`.toLowerCase();
+                const hay = normalizeText(p.name); // <-- SOLO name
                 return hay.includes(q);
             });
     }, [activeCategoryId, searchQuery]);
@@ -32,24 +34,10 @@ export default function ItemsPage() {
             </div>
 
             <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-bold text-(--app-text)">Desserts</h1>
+                <h1 className="text-2xl font-bold text-(--app-text)">Menú</h1>
 
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-(--app-surface) border border-(--app-border) rounded-xl px-3 py-2 w-56">
-                        <input
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="ml-0 flex-1 text-sm bg-transparent outline-none text-(--app-text) placeholder:text-(--app-muted)"
-                            aria-label="Search products"
-                            placeholder="Search"
-                        />
-                    </div>
-
-                    <button
-                        className="w-10 h-10 bg-(--app-surface) border border-(--app-border) rounded-xl"
-                        aria-label="Filter"
-                        type="button"
-                    />
+                    <Searcher value={searchQuery} onChange={setSearchQuery} />
                 </div>
             </div>
 

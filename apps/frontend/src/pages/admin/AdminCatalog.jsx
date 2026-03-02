@@ -1,253 +1,313 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import Searcher from "../../components/items/Searcher";
+import { useUIStore } from "../../store/uiStore";
+import CategoryExpandableTable from "../../components/admin/catalog/CategoryExpandableTable";
+import slugify from "slugify";
+import CategoryModal from "../../components/admin/catalog/modals/CategoryModal";
+import FamilyModal from "../../components/admin/catalog/modals/FamilyModal";
+import FlavorModal from "../../components/admin/catalog/modals/FlavorModal";
+import VariantModal from "../../components/admin/catalog/modals/VariantModal";
 
-function slugify(str) {
-    return String(str || "")
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-");
+import { api } from "../../lib/api";
+
+const normalizeText = (text) =>
+    (text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function tmpId(prefix = "tmp") {
+    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+
 export default function AdminCatalog() {
-    const [tree, setTree] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const { activeCategoryId, searchQuery, setSearchQuery } = useUIStore();
 
-    // Forms
-    const [catName, setCatName] = useState("");
-    const [catSlug, setCatSlug] = useState("");
+    const [categories, setCategories] = useState([]);
+    const [families, setFamilies] = useState([]);
 
-    const [familyCategoryId, setFamilyCategoryId] = useState("");
-    const [familyName, setFamilyName] = useState("");
-    const [familySlug, setFamilySlug] = useState("");
-    const [familyImageUrl, setFamilyImageUrl] = useState("");
+    // Editor centralizado
+    const [editor, setEditor] = useState(null);
+    /*
+      editor:
+      null
+      { type: "category", data? }
+      { type: "family", data? }                      // data puede venir con categoryId
+      { type: "flavor", familyId, data? }
+      { type: "variant", flavorId, data? }
+    */
 
-    const [flavorFamilyId, setFlavorFamilyId] = useState("");
-    const [flavorSlug, setFlavorSlug] = useState("default");
-    const [flavorSuffix, setFlavorSuffix] = useState("");
-    const [flavorDesc, setFlavorDesc] = useState("");
 
-    const [variantFlavorId, setVariantFlavorId] = useState("");
-    const [variantSlug, setVariantSlug] = useState("unit");
-    const [variantLabel, setVariantLabel] = useState("");
-    const [variantPriceCents, setVariantPriceCents] = useState("");
-    const [variantImageUrl, setVariantImageUrl] = useState("");
+    function slugify(text) {
+        return (text ?? "")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
+    }
 
-    async function refresh() {
-        setLoading(true);
-        try {
-            const res = await fetch("/admin/catalog");
-            const data = await res.json();
-            setTree(data);
-            // set defaults convenientes
-            if (!familyCategoryId && data?.[0]?.id) setFamilyCategoryId(data[0].id);
-        } finally {
-            setLoading(false);
-        }
+    async function refreshCatalog() {
+        const [cats, fams] = await Promise.all([
+            api.catalog.categorias(),
+            api.catalog.familias(),
+        ]);
+        setCategories(cats);
+        setFamilies(fams);
     }
 
     useEffect(() => {
-        refresh();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        refreshCatalog().catch(console.error);
     }, []);
 
-    const categories = tree;
+    const filteredFamilies = useMemo(() => {
+        const q = normalizeText(searchQuery).trim();
 
-    const families = useMemo(() => {
-        return categories.flatMap((c) =>
-            (c.families || []).map((f) => ({ ...f, _category: c }))
-        );
-    }, [categories]);
+        return (families ?? [])
+            .filter((f) => f.isActive !== false)
+            .filter((f) => (activeCategoryId === "all" ? true : f.categoryId === activeCategoryId))
+            .filter((f) => {
+                if (!q) return true;
 
-    const flavors = useMemo(() => {
-        return families.flatMap((f) =>
-            (f.flavors || []).map((fl) => ({ ...fl, _family: f }))
-        );
-    }, [families]);
+                const flavorText = (f.flavors ?? [])
+                    .map((fl) => `${fl.nameSuffix ?? ""} ${fl.description ?? ""}`)
+                    .join(" ");
 
-    async function postJson(url, body) {
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-            const txt = await res.text();
-            throw new Error(txt || "Request failed");
+                const variantText = (f.flavors ?? [])
+                    .flatMap((fl) => fl.variants ?? [])
+                    .map((v) => `${v.slug ?? ""} ${v.label ?? ""}`)
+                    .join(" ");
+
+                const hay = normalizeText(`${f.name} ${flavorText} ${variantText}`);
+                return hay.includes(q);
+            });
+    }, [families, activeCategoryId, searchQuery]);
+
+    // =========================
+    // SAVE HANDLERS
+    // =========================
+
+    async function handleSaveCategory(payload) {
+        try {
+            const dto = {
+                slug: payload.slug?.trim() || slugify(payload.name),
+                name: payload.name?.trim(),
+                sortOrder: Number(payload.sortOrder ?? 0),
+                isActive: payload.isActive !== false,
+            };
+
+            console.log("POST /categorias payload:", dto);
+            await api.catalog.crearCategoria(dto);
+
+            setEditor(null);
+            await refreshCatalog();
+        } catch (e) {
+            console.error("crearCategoria error:", e);
+            alert(String(e?.message ?? e));
         }
-        return res.json();
     }
 
-    async function onCreateCategory(e) {
-        e.preventDefault();
-        await postJson("/admin/catalog/category", {
-            slug: catSlug || slugify(catName),
-            name: catName,
-            sortOrder: 0,
-            isActive: true,
-        });
-        setCatName("");
-        setCatSlug("");
-        await refresh();
+    async function handleSaveFamily(payload) {
+        try {
+            const dto = {
+                categoryId: payload.categoryId,
+                slug: payload.slug?.trim() || slugify(payload.name),
+                name: payload.name?.trim(),
+                imageUrl: payload.imageUrl || null,
+                sortOrder: Number(payload.sortOrder ?? 0),
+                isActive: payload.isActive !== false,
+
+                // 👇 payload mínimo para que NO falle si el DTO exige flavors/variants
+                flavors: [
+                    {
+                        slug: "default",
+                        nameSuffix: "",
+                        description: "",
+                        sortOrder: 1,
+                        isActive: true,
+                        variants: [
+                            {
+                                slug: "unit",
+                                label: "",
+                                priceCents: Number(payload.basePriceCents ?? 0),
+                                currency: "ARS",
+                                imageUrl: payload.imageUrl || null,
+                                sortOrder: 1,
+                                isActive: true,
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            console.log("POST /api/catalogo/familias", dto);
+            await api.catalog.crearFamilia(dto);
+
+            setEditor(null);
+            await refreshCatalog();
+        } catch (e) {
+            console.error("crearFamilia error:", e);
+            alert(String(e?.message ?? e));
+        }
     }
 
-    async function onCreateFamily(e) {
-        e.preventDefault();
-        await postJson("/admin/catalog/family", {
-            categoryId: familyCategoryId,
-            slug: familySlug || slugify(familyName),
-            name: familyName,
-            imageUrl: familyImageUrl || undefined,
-            sortOrder: 0,
-            isActive: true,
-        });
-        setFamilyName("");
-        setFamilySlug("");
-        setFamilyImageUrl("");
-        await refresh();
+    async function handleSaveFlavor(payload) {
+        // No hay endpoint de crear/edit flavor.
+        // Reflejo local en UI (NO persiste en BD)
+        const { familyId, nameSuffix, description } = payload;
+
+        setFamilies((prev) =>
+            (prev ?? []).map((fam) => {
+                if (fam.id !== familyId) return fam;
+
+                const flavors = Array.isArray(fam.flavors) ? fam.flavors : [];
+                const newFlavor = {
+                    id: tmpId("flavor"),
+                    familyId,
+                    slug: tmpId("slug"),
+                    nameSuffix: nameSuffix ?? "",
+                    description: description ?? "",
+                    isActive: true,
+                    sortOrder: flavors.length + 1,
+                    variants: [],
+                };
+
+                return { ...fam, flavors: [...flavors, newFlavor] };
+            })
+        );
+
+        setEditor(null);
     }
 
-    async function onCreateFlavor(e) {
-        e.preventDefault();
-        await postJson("/admin/catalog/flavor", {
-            familyId: flavorFamilyId,
-            slug: flavorSlug,
-            nameSuffix: flavorSuffix,
-            description: flavorDesc || undefined,
-            sortOrder: 0,
-            isActive: true,
-        });
-        setFlavorSuffix("");
-        setFlavorDesc("");
-        await refresh();
+    async function handleSaveVariant(payload) {
+        // No hay endpoint de crear/edit variant.
+        // Reflejo local en UI (NO persiste en BD)
+        const { flavorId, label, priceCents, imageUrl } = payload;
+
+        setFamilies((prev) =>
+            (prev ?? []).map((fam) => {
+                const flavors = Array.isArray(fam.flavors) ? fam.flavors : [];
+                let touched = false;
+
+                const nextFlavors = flavors.map((fl) => {
+                    if (fl.id !== flavorId) return fl;
+
+                    touched = true;
+                    const variants = Array.isArray(fl.variants) ? fl.variants : [];
+                    const newVariant = {
+                        id: tmpId("variant"),
+                        flavorId,
+                        slug: tmpId("slug"),
+                        label: label ?? "",
+                        priceCents: Number(priceCents ?? 0),
+                        currency: "ARS",
+                        imageUrl: imageUrl ?? "",
+                        isActive: true,
+                        sortOrder: variants.length + 1,
+                    };
+
+                    return { ...fl, variants: [...variants, newVariant] };
+                });
+
+                return touched ? { ...fam, flavors: nextFlavors } : fam;
+            })
+        );
+
+        setEditor(null);
     }
 
-    async function onCreateVariant(e) {
-        e.preventDefault();
-        await postJson("/admin/catalog/variant", {
-            flavorId: variantFlavorId,
-            slug: variantSlug,
-            label: variantLabel,
-            priceCents: Number(variantPriceCents),
-            currency: "ARS",
-            imageUrl: variantImageUrl || undefined,
-            sortOrder: 0,
-            isActive: true,
-        });
-        setVariantLabel("");
-        setVariantPriceCents("");
-        setVariantImageUrl("");
-        await refresh();
-    }
+    // =========================
+    // Modal props helpers
+    // =========================
+
+    const selectedFamilyForModal =
+        editor?.type === "family" ? editor.data ?? null : null;
+
+    const flavorsForFamilyModal =
+        selectedFamilyForModal?.flavors ?? [];
 
     return (
-        <div className="p-4 border space-y-6">
+        <div className="p-6 space-y-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
-                <h1 className="text-lg font-semibold">Admin · Catálogo</h1>
-                <button
-                    onClick={refresh}
-                    className="px-3 py-2 rounded border border-(--app-border)"
-                >
-                    {loading ? "Actualizando..." : "Refrescar"}
-                </button>
-            </div>
+                <div>
+                    <span className="text-sm text-purple-600 font-medium">Admin</span>
+                    <h1 className="text-2xl font-bold text-(--app-text)">Catálogo</h1>
+                </div>
 
-            {/* Vista rápida del árbol */}
-            <div className="rounded border border-(--app-border) p-3">
-                <div className="text-sm font-semibold mb-2">Actual</div>
-                <div className="text-sm space-y-2">
-                    {categories.map((c) => (
-                        <div key={c.id}>
-                            <div className="font-medium">{c.name} <span className="opacity-60">({c.slug})</span></div>
-                            <div className="pl-4 space-y-1">
-                                {(c.families || []).map((f) => (
-                                    <div key={f.id}>
-                                        <div>• {f.name} <span className="opacity-60">({f.slug})</span></div>
-                                        <div className="pl-4">
-                                            {(f.flavors || []).map((fl) => (
-                                                <div key={fl.id}>
-                                                    – {fl.slug} <span className="opacity-60">{fl.nameSuffix}</span>
-                                                    <div className="pl-4 opacity-80">
-                                                        {(fl.variants || []).map((v) => (
-                                                            <div key={v.id}>· {v.slug} {v.label ? `(${v.label})` : ""} — ${v.priceCents}</div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                <div className="flex items-center gap-3">
+                    <Searcher value={searchQuery} onChange={setSearchQuery} />
+                    <button
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                        onClick={() => setEditor({ type: "category" })}
+                    >
+                        Nueva categoría +
+                    </button>
                 </div>
             </div>
 
-            {/* Crear Category */}
-            <form onSubmit={onCreateCategory} className="rounded border border-(--app-border) p-3 space-y-2">
-                <div className="font-semibold text-sm">Crear Categoría</div>
-                <div className="flex gap-2">
-                    <input className="flex-1 border rounded px-3 py-2" placeholder="Nombre (ej: Clásica)" value={catName} onChange={(e) => { setCatName(e.target.value); if (!catSlug) setCatSlug(slugify(e.target.value)); }} />
-                    <input className="w-64 border rounded px-3 py-2" placeholder="Slug (ej: clasica)" value={catSlug} onChange={(e) => setCatSlug(e.target.value)} />
-                    <button className="px-4 py-2 rounded bg-(--app-text) text-(--app-surface)">Crear</button>
-                </div>
-            </form>
+            {/* Tabla */}
+            <CategoryExpandableTable
+                categories={categories}
+                families={filteredFamilies}
+                onCreateFamily={(categoryId) =>
+                    setEditor({ type: "family", data: { categoryId } })
+                }
+                onEditFamily={(family) =>
+                    setEditor({ type: "family", data: family })
+                }
+                onCreateFlavor={(familyId) =>
+                    setEditor({ type: "flavor", familyId })
+                }
+                onEditFlavor={(flavor) =>
+                    setEditor({ type: "flavor", data: flavor, familyId: flavor.familyId })
+                }
+                onCreateVariant={(flavorId) =>
+                    setEditor({ type: "variant", flavorId })
+                }
+                onEditVariant={(variant) =>
+                    setEditor({ type: "variant", data: variant, flavorId: variant.flavorId })
+                }
+            />
 
-            {/* Crear Family */}
-            <form onSubmit={onCreateFamily} className="rounded border border-(--app-border) p-3 space-y-2">
-                <div className="font-semibold text-sm">Crear Familia</div>
-                <div className="flex gap-2">
-                    <select className="w-64 border rounded px-3 py-2" value={familyCategoryId} onChange={(e) => setFamilyCategoryId(e.target.value)}>
-                        <option value="" disabled>Elegí categoría</option>
-                        {categories.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                    <input className="flex-1 border rounded px-3 py-2" placeholder="Nombre (ej: Clásica)" value={familyName} onChange={(e) => { setFamilyName(e.target.value); if (!familySlug) setFamilySlug(slugify(e.target.value)); }} />
-                    <input className="w-64 border rounded px-3 py-2" placeholder="Slug (ej: clasica)" value={familySlug} onChange={(e) => setFamilySlug(e.target.value)} />
-                    <button className="px-4 py-2 rounded bg-(--app-text) text-(--app-surface)">Crear</button>
-                </div>
-                <input className="w-full border rounded px-3 py-2" placeholder="Imagen URL (opcional)" value={familyImageUrl} onChange={(e) => setFamilyImageUrl(e.target.value)} />
-            </form>
+            {/* Modales */}
+            {editor?.type === "category" && (
+                <CategoryModal
+                    open
+                    initialData={editor.data}
+                    onClose={() => setEditor(null)}
+                    onSave={handleSaveCategory}
+                />
+            )}
 
-            {/* Crear Flavor */}
-            <form onSubmit={onCreateFlavor} className="rounded border border-(--app-border) p-3 space-y-2">
-                <div className="font-semibold text-sm">Crear Sabor (Flavor)</div>
-                <div className="flex gap-2">
-                    <select className="w-96 border rounded px-3 py-2" value={flavorFamilyId} onChange={(e) => setFlavorFamilyId(e.target.value)}>
-                        <option value="" disabled>Elegí familia</option>
-                        {families.map((f) => (
-                            <option key={f.id} value={f.id}>{f._category?.name} → {f.name}</option>
-                        ))}
-                    </select>
-                    <input className="w-64 border rounded px-3 py-2" placeholder="slug (ej: default / nachos)" value={flavorSlug} onChange={(e) => setFlavorSlug(e.target.value)} />
-                    <button className="px-4 py-2 rounded bg-(--app-text) text-(--app-surface)">Crear</button>
-                </div>
-                <div className="flex gap-2">
-                    <input className="flex-1 border rounded px-3 py-2" placeholder='nameSuffix (ej: "con nachos")' value={flavorSuffix} onChange={(e) => setFlavorSuffix(e.target.value)} />
-                    <input className="flex-1 border rounded px-3 py-2" placeholder="Descripción (opcional)" value={flavorDesc} onChange={(e) => setFlavorDesc(e.target.value)} />
-                </div>
-            </form>
+            {editor?.type === "family" && (
+                <FamilyModal
+                    open
+                    categories={categories}
+                    initialData={editor.data}
+                    flavors={flavorsForFamilyModal}
+                    onClose={() => setEditor(null)}
+                    onSave={handleSaveFamily}
+                />
+            )}
 
-            {/* Crear Variant */}
-            <form onSubmit={onCreateVariant} className="rounded border border-(--app-border) p-3 space-y-2">
-                <div className="font-semibold text-sm">Crear Variante (vendible)</div>
-                <div className="flex gap-2">
-                    <select className="w-[520px] border rounded px-3 py-2" value={variantFlavorId} onChange={(e) => setVariantFlavorId(e.target.value)}>
-                        <option value="" disabled>Elegí flavor</option>
-                        {flavors.map((fl) => (
-                            <option key={fl.id} value={fl.id}>
-                                {fl._family?._category?.name} → {fl._family?.name} → {fl.slug} {fl.nameSuffix ? `(${fl.nameSuffix})` : ""}
-                            </option>
-                        ))}
-                    </select>
-                    <input className="w-40 border rounded px-3 py-2" placeholder="slug (unit/simple)" value={variantSlug} onChange={(e) => setVariantSlug(e.target.value)} />
-                    <input className="w-40 border rounded px-3 py-2" placeholder="label (Simple)" value={variantLabel} onChange={(e) => setVariantLabel(e.target.value)} />
-                    <input className="w-40 border rounded px-3 py-2" placeholder="priceCents" value={variantPriceCents} onChange={(e) => setVariantPriceCents(e.target.value)} />
-                    <button className="px-4 py-2 rounded bg-(--app-text) text-(--app-surface)">Crear</button>
-                </div>
-                <input className="w-full border rounded px-3 py-2" placeholder="Imagen URL (opcional)" value={variantImageUrl} onChange={(e) => setVariantImageUrl(e.target.value)} />
-            </form>
+            {editor?.type === "flavor" && (
+                <FlavorModal
+                    open
+                    familyId={editor.familyId}
+                    initialData={editor.data}
+                    onClose={() => setEditor(null)}
+                    onSave={handleSaveFlavor}
+                />
+            )}
+
+            {editor?.type === "variant" && (
+                <VariantModal
+                    open
+                    flavorId={editor.flavorId}
+                    initialData={editor.data}
+                    onClose={() => setEditor(null)}
+                    onSave={handleSaveVariant}
+                />
+            )}
         </div>
     );
 }

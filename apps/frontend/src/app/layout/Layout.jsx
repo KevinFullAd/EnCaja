@@ -13,6 +13,8 @@ export default function Layout() {
                     <Outlet />
                 </div>
             </div>
+
+            <OrderPanel />
         </div>
     );
 }

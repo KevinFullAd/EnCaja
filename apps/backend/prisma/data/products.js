@@ -1,5 +1,5 @@
 // data/products.js
- 
+
 export const CATALOG = [
     // ===== CLASICA (simple/doble/triple) =====
     {
@@ -311,7 +311,7 @@ export const CATALOG = [
     {
         id: "premium-bondiola",
         categoryId: "premium",
-        name: "Premium",
+        name: "Premium Bondiola",
         active: true,
         flavors: [
             {
@@ -334,7 +334,7 @@ export const CATALOG = [
     {
         id: "premium-picante",
         categoryId: "premium",
-        name: "Premium",
+        name: "Premium Picante",
         active: true,
         flavors: [
             {
@@ -353,45 +353,29 @@ export const CATALOG = [
                 ],
             },
         ],
-    },
+    }, 
     {
         id: "premium-teque-burger",
         categoryId: "premium",
-        name: "Premium",
+        name: "Teque Burger",
         active: true,
         flavors: [
             {
-                id: "teque-burger",
-                nameSuffix: "teque burger",
+                id: "default",
+                nameSuffix: "",
                 description: "Burger premium con tequeños",
                 active: true,
                 variants: [
                     {
-                        id: "unit",
-                        label: "",
+                        id: "doble",
+                        label: "Doble",
                         priceCents: 1900000,
                         imageUrl: "/images/burgers/premium/teque_burger.jpg",
                         active: true,
                     },
-                ],
-            },
-        ],
-    },
-    {
-        id: "premium-triple-teque-burger",
-        categoryId: "premium",
-        name: "Premium",
-        active: true,
-        flavors: [
-            {
-                id: "triple-teque-burger",
-                nameSuffix: "triple teque burger",
-                description: "Versión triple de la teque burger",
-                active: true,
-                variants: [
                     {
-                        id: "unit",
-                        label: "",
+                        id: "triple",
+                        label: "Triple",
                         priceCents: 2200000,
                         imageUrl: "/images/burgers/premium/triple_teque_burger.jpg",
                         active: true,

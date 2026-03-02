@@ -55,11 +55,28 @@ export const api = {
     },
 
     catalog: {
+        // GET
         categorias() {
             return apiFetch("/api/catalogo/categorias", { auth: false }); // hoy no está protegido
         },
         familias() {
             return apiFetch("/api/catalogo/familias", { auth: false }); // hoy no está protegido
+        },
+
+        // POST
+        crearCategoria(payload) {
+            return apiFetch("/api/catalogo/categorias", {
+                method: "POST",
+                body: payload,
+                auth: false,
+            });
+        },
+        crearFamilia(payload) {
+            return apiFetch("/api/catalogo/familias", {
+                method: "POST",
+                body: payload,
+                auth: false,
+            });
         },
     },
 

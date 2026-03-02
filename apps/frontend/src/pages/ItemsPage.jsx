@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import CategoryTabs from "../components/items/CategoryTabs";
 import ProductGrid from "../components/items/ProductGrid";
 import { useUIStore } from "../store/uiStore";
-import Searcher from "../components/items/Searcher";
-import OrderPanel from "../components/layout/OrderPanel";
+import Searcher from "../components/items/Searcher"; 
 import { api } from "../lib/api";
 import { expandFamiliesToProducts } from "../data/expandCatalog";
 
@@ -41,8 +40,8 @@ export default function ItemsPage() {
     }, [products, activeCategoryId, searchQuery]);
 
     return (
-        <main className="p-6 flex bg-(--app-bg)">
-            <div className="max-w-3/4">
+        <main className="flex h-dvh bg-(--app-bg)">
+            <div className="min-w-3/4 flex-1 p-6">
                 <div className="mb-1">
                     <span className="text-sm font-medium text-purple-600">Items</span>
                 </div>
@@ -61,7 +60,6 @@ export default function ItemsPage() {
                 <ProductGrid products={filteredProducts} />
             </div>
 
-            <OrderPanel />
 
 
         </main>

@@ -1,34 +1,50 @@
 // src/components/admin/catalog/VariantRow.jsx
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2, RotateCcw } from "lucide-react";
 
 function moneyARS(value) {
-    // Dividimos por 100 para que los últimos dos dígitos sean decimales
     const amount = Number(value ?? 0) / 100;
-
     return amount.toLocaleString("es-AR", {
-        style: "currency",
-        currency: "ARS",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        style: "currency", currency: "ARS",
+        minimumFractionDigits: 2, maximumFractionDigits: 2,
     });
 }
-export default function VariantRow({ variant, onEditVariant }) {
+
+export default function VariantRow({ variant, onEditVariant, onDeleteVariant, onRestoreVariant, showInactive = false }) {
+    const isInactive = variant.isActive === false;
+
     return (
-        <tr className="bg-white border-b border-t border-collapse border-(--app-border) hover:bg-(--app-bg)
-        ">
+        <tr className={`bg-white border-b border-t border-collapse border-(--app-border) hover:bg-(--app-bg) transition-opacity ${isInactive ? "opacity-50" : ""}`}>
             <td className="px-28 py-2 text-sm">
-                {variant.label || variant.slug}
+                <div className="flex items-center gap-2">
+                    <span>{variant.label || variant.slug}</span>
+                    {isInactive && (
+                        <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            deshabilitado
+                        </span>
+                    )}
+                </div>
             </td>
 
-            <td className="px-4 text-sm">
-                {moneyARS(variant.priceCents)}
-            </td>
+            <td className="px-4 text-sm">{moneyARS(variant.priceCents)}</td>
 
-            <td className="px-4 text-right">
-                <button
-                    onClick={() => onEditVariant(variant)}
-                    className="text-gray-500 hover:text-black"
-                >
+            <td className="px-4 text-right space-x-3">
+                {isInactive ? (
+                    <button
+                        onClick={() => onRestoreVariant(variant)}
+                        className="text-gray-400 hover:text-green-600 transition-colors"
+                        title="Rehabilitar"
+                    >
+                        <RotateCcw size={13} />
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => onDeleteVariant(variant)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                        <Trash2 size={13} />
+                    </button>
+                )}
+                <button onClick={() => onEditVariant(variant)} className="text-gray-500 hover:text-black">
                     <Pencil size={14} />
                 </button>
             </td>

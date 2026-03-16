@@ -64,7 +64,7 @@ export default function ProductCard({ product }) {
               imageUrl: imageSrc,
             })
           }
-          className="w-7 h-7 rounded-full border-2 border-purple-600 flex items-center justify-center hover:bg-purple-50 transition-colors"
+          className="w-17 h-7 cursor-pointer rounded-full border-2 border-purple-600 flex items-center justify-center hover:bg-purple-50 transition-colors"
           type="button"
           aria-label="Add product"
         >

@@ -5,14 +5,21 @@ import CategoryRow from "./CategoryRow";
 export default function CategoryExpandableTable({
     categories = [],
     families = [],
-
-    // 🔥 nuevos callbacks
+    showInactive = false,
     onCreateFamily,
+    onEditCategory,
     onEditFamily,
     onCreateFlavor,
     onEditFlavor,
     onCreateVariant,
     onEditVariant,
+    onDeleteCategory,
+    onDeleteFamily,
+    onDeleteFlavor,
+    onDeleteVariant,
+    onRestoreFamily,
+    onRestoreFlavor,
+    onRestoreVariant,
 }) {
     const [open, setOpen] = useState(() => new Set());
 
@@ -24,7 +31,6 @@ export default function CategoryExpandableTable({
         });
     };
 
-    // Agrupar familias por categoría
     const byCategory = useMemo(() => {
         const map = new Map();
         for (const f of families ?? []) {
@@ -38,16 +44,12 @@ export default function CategoryExpandableTable({
     const rows = useMemo(() => {
         return (categories ?? []).map((c) => {
             const fams = byCategory.get(c.id) ?? [];
-
-            const representativeImage =
-                fams.find((f) => f.imageUrl)?.imageUrl ?? null;
-
             return {
                 id: c.id,
                 name: c.name,
                 active: c.isActive !== false,
                 families: fams,
-                image: representativeImage,
+                image: fams.find((f) => f.imageUrl)?.imageUrl ?? null,
             };
         });
     }, [categories, byCategory]);
@@ -64,35 +66,33 @@ export default function CategoryExpandableTable({
                             <th className="w-12 px-4 py-3"></th>
                         </tr>
                     </thead>
-
                     <tbody>
-                        {rows.map((cat) => {
-                            const isOpen = open.has(cat.id);
-
-                            return (
-                                <CategoryRow
-                                    key={cat.id}
-                                    cat={cat}
-                                    isOpen={isOpen}
-                                    onToggle={() => toggle(cat.id)}
-
-                                    // 🔥 pasamos callbacks hacia abajo
-                                    onCreateFamily={onCreateFamily}
-                                    onEditFamily={onEditFamily}
-                                    onCreateFlavor={onCreateFlavor}
-                                    onEditFlavor={onEditFlavor}
-                                    onCreateVariant={onCreateVariant}
-                                    onEditVariant={onEditVariant}
-                                />
-                            );
-                        })}
-
+                        {rows.map((cat) => (
+                            <CategoryRow
+                                key={cat.id}
+                                cat={cat}
+                                isOpen={open.has(cat.id)}
+                                onToggle={() => toggle(cat.id)}
+                                onCreateFamily={onCreateFamily}
+                                onEditCategory={onEditCategory}
+                                onEditFamily={onEditFamily}
+                                onCreateFlavor={onCreateFlavor}
+                                onEditFlavor={onEditFlavor}
+                                onCreateVariant={onCreateVariant}
+                                onEditVariant={onEditVariant}
+                                onDeleteCategory={onDeleteCategory}
+                                onDeleteFamily={onDeleteFamily}
+                                onDeleteFlavor={onDeleteFlavor}
+                                onDeleteVariant={onDeleteVariant}
+                                onRestoreFamily={onRestoreFamily}
+                                onRestoreFlavor={onRestoreFlavor}
+                                onRestoreVariant={onRestoreVariant}
+                                showInactive={showInactive}
+                            />
+                        ))}
                         {rows.length === 0 && (
                             <tr>
-                                <td
-                                    colSpan={4}
-                                    className="px-4 py-10 text-center text-sm text-(--app-muted)"
-                                >
+                                <td colSpan={4} className="px-4 py-10 text-center text-sm text-(--app-muted)">
                                     No hay categorías para mostrar.
                                 </td>
                             </tr>

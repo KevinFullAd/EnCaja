@@ -1,83 +1,87 @@
+// src/pages/admin/AdminCatalog.jsx
 import { useState, useEffect, useMemo } from "react";
 import Searcher from "../../components/items/Searcher";
 import { useUIStore } from "../../store/uiStore";
+import { useDeleteStore } from "../../store/deleteStore";
+import { useDraftStore } from "../../store/draftStore";
 import CategoryExpandableTable from "../../components/admin/catalog/CategoryExpandableTable";
-import slugify from "slugify";
 import CategoryModal from "../../components/admin/catalog/modals/CategoryModal";
-import FamilyModal from "../../components/admin/catalog/modals/FamilyModal";
-import FlavorModal from "../../components/admin/catalog/modals/FlavorModal";
-import VariantModal from "../../components/admin/catalog/modals/VariantModal";
-
+import ProductWizardModal from "../../components/admin/catalog/modals/ProductWizardModal";
+import ConfirmDeleteModal from "../../components/admin/catalog/modals/ConfirmDeleteModal";
 import { api } from "../../lib/api";
+import { BookmarkCheck, X, EyeOff } from "lucide-react";
 
 const normalizeText = (text) =>
     (text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-function tmpId(prefix = "tmp") {
-    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function slugify(text) {
+    return (text ?? "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
 }
 
+function DraftBanner({ draft, onContinue, onDiscard }) {
+    const name = draft?.family?.name?.trim();
+    const savedAt = draft?.savedAt
+        ? new Date(draft.savedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+        : null;
+    return (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-purple-200 bg-purple-50 dark:border-purple-900/40 dark:bg-purple-950/20">
+            <BookmarkCheck size={16} className="text-purple-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-purple-700 dark:text-purple-400">
+                    Borrador guardado{name ? `: "${name}"` : ""}
+                </p>
+                {savedAt && <p className="text-xs text-purple-500">Guardado a las {savedAt}</p>}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={onContinue} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700 transition-colors">
+                    Continuar
+                </button>
+                <button onClick={onDiscard} className="text-purple-400 hover:text-purple-600 transition-colors">
+                    <X size={14} />
+                </button>
+            </div>
+        </div>
+    );
+}
 
 export default function AdminCatalog() {
     const { activeCategoryId, searchQuery, setSearchQuery } = useUIStore();
+    const { askDelete, target, loading: deleteLoading, confirm, cancel } = useDeleteStore();
+    const { draft, clearDraft } = useDraftStore();
 
     const [categories, setCategories] = useState([]);
     const [families, setFamilies] = useState([]);
+    const [showInactive, setShowInactive] = useState(false);
 
-    // Editor centralizado
+    // editor: null
+    //   | { type: "category", data? }
+    //   | { type: "product", data?, initialStep? }
     const [editor, setEditor] = useState(null);
-    /*
-      editor:
-      null
-      { type: "category", data? }
-      { type: "family", data? }                      // data puede venir con categoryId
-      { type: "flavor", familyId, data? }
-      { type: "variant", flavorId, data? }
-    */
-
-
-    function slugify(text) {
-        return (text ?? "")
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "");
-    }
 
     async function refreshCatalog() {
         const [cats, fams] = await Promise.all([
-            api.catalog.categorias(),
-            api.catalog.familias(),
+            api.catalog.categorias({ includeInactive: showInactive }),
+            api.catalog.familias({ includeInactive: showInactive }),
         ]);
         setCategories(cats);
         setFamilies(fams);
     }
 
-    useEffect(() => {
-        refreshCatalog().catch(console.error);
-    }, []);
+    useEffect(() => { refreshCatalog().catch(console.error); }, [showInactive]);
 
     const filteredFamilies = useMemo(() => {
         const q = normalizeText(searchQuery).trim();
-
         return (families ?? [])
-            .filter((f) => f.isActive !== false)
-            .filter((f) => (activeCategoryId === "all" ? true : f.categoryId === activeCategoryId))
+            .filter((f) => activeCategoryId === "all" ? true : f.categoryId === activeCategoryId)
             .filter((f) => {
                 if (!q) return true;
-
-                const flavorText = (f.flavors ?? [])
-                    .map((fl) => `${fl.nameSuffix ?? ""} ${fl.description ?? ""}`)
-                    .join(" ");
-
-                const variantText = (f.flavors ?? [])
-                    .flatMap((fl) => fl.variants ?? [])
-                    .map((v) => `${v.slug ?? ""} ${v.label ?? ""}`)
-                    .join(" ");
-
-                const hay = normalizeText(`${f.name} ${flavorText} ${variantText}`);
-                return hay.includes(q);
+                const flavorText = (f.flavors ?? []).map((fl) => `${fl.nameSuffix ?? ""} ${fl.description ?? ""}`).join(" ");
+                const variantText = (f.flavors ?? []).flatMap((fl) => fl.variants ?? []).map((v) => `${v.slug ?? ""} ${v.label ?? ""}`).join(" ");
+                return normalizeText(`${f.name} ${flavorText} ${variantText}`).includes(q);
             });
     }, [families, activeCategoryId, searchQuery]);
 
@@ -87,153 +91,161 @@ export default function AdminCatalog() {
 
     async function handleSaveCategory(payload) {
         try {
-            const dto = {
-                slug: payload.slug?.trim() || slugify(payload.name),
-                name: payload.name?.trim(),
-                sortOrder: Number(payload.sortOrder ?? 0),
-                isActive: payload.isActive !== false,
-            };
-
-            console.log("POST /categorias payload:", dto);
-            await api.catalog.crearCategoria(dto);
-
-            setEditor(null);
-            await refreshCatalog();
-        } catch (e) {
-            console.error("crearCategoria error:", e);
-            alert(String(e?.message ?? e));
-        }
-    }
-
-    async function handleSaveFamily(payload) {
-        try {
-            const dto = {
-                categoryId: payload.categoryId,
-                slug: payload.slug?.trim() || slugify(payload.name),
-                name: payload.name?.trim(),
-                imageUrl: payload.imageUrl || null,
-                sortOrder: Number(payload.sortOrder ?? 0),
-                isActive: payload.isActive !== false,
-
-                // 👇 payload mínimo para que NO falle si el DTO exige flavors/variants
-                flavors: [
-                    {
-                        slug: "default",
-                        nameSuffix: "",
-                        description: "",
-                        sortOrder: 1,
-                        isActive: true,
-                        variants: [
-                            {
-                                slug: "unit",
-                                label: "",
-                                priceCents: Number(payload.basePriceCents ?? 0),
-                                currency: "ARS",
-                                imageUrl: payload.imageUrl || null,
-                                sortOrder: 1,
-                                isActive: true,
-                            },
-                        ],
-                    },
-                ],
-            };
-
-            console.log("POST /api/catalogo/familias", dto);
-            await api.catalog.crearFamilia(dto);
-
-            setEditor(null);
-            await refreshCatalog();
-        } catch (e) {
-            console.error("crearFamilia error:", e);
-            alert(String(e?.message ?? e));
-        }
-    }
-
-    async function handleSaveFlavor(payload) {
-        // No hay endpoint de crear/edit flavor.
-        // Reflejo local en UI (NO persiste en BD)
-        const { familyId, nameSuffix, description } = payload;
-
-        setFamilies((prev) =>
-            (prev ?? []).map((fam) => {
-                if (fam.id !== familyId) return fam;
-
-                const flavors = Array.isArray(fam.flavors) ? fam.flavors : [];
-                const newFlavor = {
-                    id: tmpId("flavor"),
-                    familyId,
-                    slug: tmpId("slug"),
-                    nameSuffix: nameSuffix ?? "",
-                    description: description ?? "",
-                    isActive: true,
-                    sortOrder: flavors.length + 1,
-                    variants: [],
-                };
-
-                return { ...fam, flavors: [...flavors, newFlavor] };
-            })
-        );
-
-        setEditor(null);
-    }
-
-    async function handleSaveVariant(payload) {
-        // No hay endpoint de crear/edit variant.
-        // Reflejo local en UI (NO persiste en BD)
-        const { flavorId, label, priceCents, imageUrl } = payload;
-
-        setFamilies((prev) =>
-            (prev ?? []).map((fam) => {
-                const flavors = Array.isArray(fam.flavors) ? fam.flavors : [];
-                let touched = false;
-
-                const nextFlavors = flavors.map((fl) => {
-                    if (fl.id !== flavorId) return fl;
-
-                    touched = true;
-                    const variants = Array.isArray(fl.variants) ? fl.variants : [];
-                    const newVariant = {
-                        id: tmpId("variant"),
-                        flavorId,
-                        slug: tmpId("slug"),
-                        label: label ?? "",
-                        priceCents: Number(priceCents ?? 0),
-                        currency: "ARS",
-                        imageUrl: imageUrl ?? "",
-                        isActive: true,
-                        sortOrder: variants.length + 1,
-                    };
-
-                    return { ...fl, variants: [...variants, newVariant] };
+            if (editor?.data?.id) {
+                await api.catalog.actualizarCategoria(editor.data.id, {
+                    name: payload.name,
+                    isActive: payload.isActive,
                 });
+            } else {
+                await api.catalog.crearCategoria({
+                    slug: slugify(payload.name),
+                    name: payload.name,
+                    sortOrder: 0,
+                    isActive: payload.isActive,
+                });
+            }
+            setEditor(null);
+            await refreshCatalog();
+        } catch (e) {
+            console.error(e);
+            alert(String(e?.message ?? e));
+        }
+    }
 
-                return touched ? { ...fam, flavors: nextFlavors } : fam;
-            })
-        );
-
+    async function handleSaveProduct(family) {
+        if (family.id) {
+            // EDICIÓN — PATCH con datos completos
+            await api.catalog.actualizarFamilia(family.id, {
+                categoryId: family.categoryId,
+                name: family.name?.trim(),
+                imageUrl: family.imageUrl || null,
+                sortOrder: Number(family.sortOrder ?? 0),
+                isActive: family.isActive !== false,
+                flavors: family.flavors.map((fl, fi) => ({
+                    id: fl.id,    // si tiene id => update, si no => create
+                    slug: fl.slug?.trim() || (fi === 0 ? "default" : `flavor-${fi + 1}`),
+                    nameSuffix: fl.nameSuffix ?? "",
+                    description: fl.description ?? "",
+                    sortOrder: Number(fl.sortOrder ?? fi + 1),
+                    isActive: fl.isActive !== false,
+                    variants: fl.variants.map((v, vi) => ({
+                        id: v.id,   // si tiene id => update, si no => create
+                        slug: v.slug?.trim() || (fl.variants.length === 1 ? "unit" : `variant-${vi + 1}`),
+                        label: v.label ?? "",
+                        priceCents: Number(v.priceCents ?? 0),
+                        currency: v.currency ?? "ARS",
+                        imageUrl: v.imageUrl || null,
+                        sortOrder: Number(v.sortOrder ?? vi + 1),
+                        isActive: v.isActive !== false,
+                    })),
+                })),
+            });
+        } else {
+            // CREACIÓN — POST
+            await api.catalog.crearFamilia({
+                categoryId: family.categoryId,
+                slug: family.slug?.trim() || slugify(family.name),
+                name: family.name?.trim(),
+                imageUrl: family.imageUrl || null,
+                sortOrder: Number(family.sortOrder ?? 0),
+                isActive: family.isActive !== false,
+                flavors: family.flavors.map((fl, fi) => ({
+                    slug: fl.slug?.trim() || (fi === 0 ? "default" : `flavor-${fi + 1}`),
+                    nameSuffix: fl.nameSuffix ?? "",
+                    description: fl.description ?? "",
+                    sortOrder: Number(fl.sortOrder ?? fi + 1),
+                    isActive: fl.isActive !== false,
+                    variants: fl.variants.map((v, vi) => ({
+                        slug: v.slug?.trim() || (fl.variants.length === 1 ? "unit" : `variant-${vi + 1}`),
+                        label: v.label ?? "",
+                        priceCents: Number(v.priceCents ?? 0),
+                        currency: v.currency ?? "ARS",
+                        imageUrl: v.imageUrl || null,
+                        sortOrder: Number(v.sortOrder ?? vi + 1),
+                        isActive: v.isActive !== false,
+                    })),
+                })),
+            });
+        }
         setEditor(null);
+        await refreshCatalog();
     }
 
     // =========================
-    // Modal props helpers
+    // DELETE
     // =========================
 
-    const selectedFamilyForModal =
-        editor?.type === "family" ? editor.data ?? null : null;
+    const onDeleteCategory = (cat) => askDelete({
+        type: "category", data: { id: cat.id },
+        title: `Deshabilitar "${cat.name}"`,
+        description: "Se deshabilitarán también todas sus familias, sabores y variantes.",
+        onSuccess: refreshCatalog,
+    });
+    const onDeleteFamily = (family) => askDelete({
+        type: "family", data: family,
+        title: `Deshabilitar "${family.name}"`,
+        description: "Se deshabilitarán también todos sus sabores y variantes.",
+        onSuccess: refreshCatalog,
+    });
+    const onDeleteFlavor = (flavor) => askDelete({
+        type: "flavor", data: flavor,
+        title: `Deshabilitar sabor "${flavor.nameSuffix || "Default"}"`,
+        description: "Se deshabilitarán también todas sus variantes.",
+        onSuccess: refreshCatalog,
+    });
+    const onDeleteVariant = (variant) => askDelete({
+        type: "variant", data: variant,
+        title: `Deshabilitar variante "${variant.label || variant.slug}"`,
+        onSuccess: refreshCatalog,
+    });
 
-    const flavorsForFamilyModal =
-        selectedFamilyForModal?.flavors ?? [];
+    // =========================
+    // RESTORE
+    // =========================
+
+    async function handleRestore(apiFn, id) {
+        try { await apiFn(id); await refreshCatalog(); }
+        catch (e) { console.error(e); alert(String(e?.message ?? e)); }
+    }
+
+    const onRestoreFamily  = (f) => handleRestore(api.catalog.rehabilitarFamilia, f.id);
+    const onRestoreFlavor  = (f) => handleRestore(api.catalog.rehabilitarFlavor, f.id);
+    const onRestoreVariant = (v) => handleRestore(api.catalog.rehabilitarVariant, v.id);
+
+    // =========================
+    // HELPERS para abrir el wizard en el paso correcto
+    // =========================
+
+    function openProductEditor(family, initialStep = 0) {
+        setEditor({ type: "product", data: family, initialStep });
+    }
+
+    const inactiveCount = families.filter((f) => !f.isActive).length;
 
     return (
         <div className="p-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <span className="text-sm text-purple-600 font-medium">Admin</span>
                     <h1 className="text-2xl font-bold text-(--app-text)">Catálogo</h1>
                 </div>
-
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowInactive((v) => !v)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            showInactive
+                                ? "border-amber-300 bg-amber-50 text-amber-700"
+                                : "border-(--app-border) text-(--app-muted) hover:border-amber-300 hover:text-amber-600"
+                        }`}
+                    >
+                        <EyeOff size={14} />
+                        <span>{showInactive ? "Ocultar deshabilitados" : "Ver deshabilitados"}</span>
+                        {!showInactive && inactiveCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                                {inactiveCount}
+                            </span>
+                        )}
+                    </button>
                     <Searcher value={searchQuery} onChange={setSearchQuery} />
                     <button
                         className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
@@ -244,70 +256,85 @@ export default function AdminCatalog() {
                 </div>
             </div>
 
-            {/* Tabla */}
+            {draft && (
+                <DraftBanner
+                    draft={draft}
+                    onContinue={() => setEditor({ type: "product" })}
+                    onDiscard={clearDraft}
+                />
+            )}
+
+            {showInactive && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50">
+                    <EyeOff size={14} className="text-amber-600 flex-shrink-0" />
+                    <p className="text-xs text-amber-700">
+                        Estás viendo elementos deshabilitados. No aparecen en el menú ni en las órdenes.
+                    </p>
+                </div>
+            )}
+
             <CategoryExpandableTable
                 categories={categories}
                 families={filteredFamilies}
+                showInactive={showInactive}
                 onCreateFamily={(categoryId) =>
-                    setEditor({ type: "family", data: { categoryId } })
+                    setEditor({ type: "product", data: { categoryId }, initialStep: 0 })
                 }
-                onEditFamily={(family) =>
-                    setEditor({ type: "family", data: family })
+                onEditCategory={(cat) =>
+                    setEditor({ type: "category", data: { id: cat.id, name: cat.name, isActive: cat.active } })
                 }
-                onCreateFlavor={(familyId) =>
-                    setEditor({ type: "flavor", familyId })
-                }
-                onEditFlavor={(flavor) =>
-                    setEditor({ type: "flavor", data: flavor, familyId: flavor.familyId })
-                }
-                onCreateVariant={(flavorId) =>
-                    setEditor({ type: "variant", flavorId })
-                }
-                onEditVariant={(variant) =>
-                    setEditor({ type: "variant", data: variant, flavorId: variant.flavorId })
-                }
+                onEditFamily={(family) => openProductEditor(family, 0)}
+                onCreateFlavor={(familyId) => {
+                    const fam = families.find((f) => f.id === familyId);
+                    openProductEditor(fam, 1); // abre en paso Sabores
+                }}
+                onEditFlavor={(flavor) => {
+                    const fam = families.find((f) => f.id === flavor.familyId);
+                    openProductEditor(fam, 1); // abre en paso Sabores
+                }}
+                onCreateVariant={(flavorId) => {
+                    const fam = families.find((f) => f.flavors?.some((fl) => fl.id === flavorId));
+                    openProductEditor(fam, 2); // abre en paso Precios
+                }}
+                onEditVariant={(variant) => {
+                    const fam = families.find((f) =>
+                        f.flavors?.some((fl) => fl.variants?.some((v) => v.id === variant.id))
+                    );
+                    openProductEditor(fam, 2); // abre en paso Precios
+                }}
+                onDeleteCategory={onDeleteCategory}
+                onDeleteFamily={onDeleteFamily}
+                onDeleteFlavor={onDeleteFlavor}
+                onDeleteVariant={onDeleteVariant}
+                onRestoreFamily={onRestoreFamily}
+                onRestoreFlavor={onRestoreFlavor}
+                onRestoreVariant={onRestoreVariant}
             />
 
-            {/* Modales */}
-            {editor?.type === "category" && (
-                <CategoryModal
-                    open
-                    initialData={editor.data}
-                    onClose={() => setEditor(null)}
-                    onSave={handleSaveCategory}
-                />
-            )}
+            <CategoryModal
+                open={editor?.type === "category"}
+                initialData={editor?.data}
+                onClose={() => setEditor(null)}
+                onSave={handleSaveCategory}
+            />
 
-            {editor?.type === "family" && (
-                <FamilyModal
-                    open
-                    categories={categories}
-                    initialData={editor.data}
-                    flavors={flavorsForFamilyModal}
-                    onClose={() => setEditor(null)}
-                    onSave={handleSaveFamily}
-                />
-            )}
+            <ProductWizardModal
+                open={editor?.type === "product"}
+                initialData={editor?.data}
+                initialStep={editor?.initialStep ?? 0}
+                categories={categories}
+                onClose={() => setEditor(null)}
+                onSave={handleSaveProduct}
+            />
 
-            {editor?.type === "flavor" && (
-                <FlavorModal
-                    open
-                    familyId={editor.familyId}
-                    initialData={editor.data}
-                    onClose={() => setEditor(null)}
-                    onSave={handleSaveFlavor}
-                />
-            )}
-
-            {editor?.type === "variant" && (
-                <VariantModal
-                    open
-                    flavorId={editor.flavorId}
-                    initialData={editor.data}
-                    onClose={() => setEditor(null)}
-                    onSave={handleSaveVariant}
-                />
-            )}
+            <ConfirmDeleteModal
+                open={!!target}
+                title={target?.title}
+                description={target?.description}
+                loading={deleteLoading}
+                onClose={cancel}
+                onConfirm={confirm}
+            />
         </div>
     );
 }

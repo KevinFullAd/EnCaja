@@ -1,4 +1,13 @@
+// src/components/order/OrderItemRow.jsx
 import { Minus, Plus } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
+
+function resolveUrl(url) {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 
 function formatMoneyFromCents(priceCents, currency = "ARS") {
     if (typeof priceCents !== "number") return "—";
@@ -9,25 +18,22 @@ function formatMoneyFromCents(priceCents, currency = "ARS") {
     }).format(priceCents / 100);
 }
 
-function formatMoneyFromFloat(price) {
-    if (typeof price !== "number") return "—";
-    return "£" + price.toFixed(2).replace(".", ",");
-}
-
 export default function OrderItemRow({ item, onInc, onDec }) {
-    const priceLabel =
-        typeof item.priceCents === "number"
-            ? formatMoneyFromCents(item.priceCents, item.currency ?? "ARS")
-            : formatMoneyFromFloat(item.price);
+    const priceLabel = formatMoneyFromCents(item.priceCents, item.currency ?? "ARS");
+    const imageSrc = resolveUrl(item.imageUrl ?? item.image);
 
     return (
         <div className="flex items-center gap-3 py-3">
             <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-(--app-border)/30">
-                <img
-                    src={item.imageUrl ?? item.image}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                />
+                {imageSrc ? (
+                    <img
+                        src={imageSrc}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <div className="w-full h-full bg-(--app-border)/30" />
+                )}
             </div>
 
             <div className="flex-1 min-w-0">

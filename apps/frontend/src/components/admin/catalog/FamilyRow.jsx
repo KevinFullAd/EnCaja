@@ -11,6 +11,7 @@ export default function FamilyRow({
     onCreateVariant,
     onEditVariant,
     onDeleteFamily,
+    onDeleteFamilyHard,
     onDeleteFlavor,
     onDeleteVariant,
     onRestoreFamily,
@@ -20,7 +21,8 @@ export default function FamilyRow({
 }) {
     const [open, setOpen] = useState(false);
     const isInactive = family.isActive === false;
-
+    
+    console.log("onDeleteFamilyHard:", onDeleteFamilyHard);
     return (
         <>
             <tr className={`bg-(--app-bg)/40 transition-opacity ${isInactive ? "opacity-50" : ""}`}>
@@ -47,29 +49,38 @@ export default function FamilyRow({
 
                 <td className="px-4 text-right space-x-3">
                     {isInactive ? (
-                        <button
-                            onClick={() => onRestoreFamily(family)}
-                            className="text-gray-400 hover:text-green-600 transition-colors"
-                            title="Rehabilitar"
-                        >
-                            <RotateCcw size={15} />
-                        </button>
+                        <>
+                            <button
+                                onClick={() => onRestoreFamily(family)}
+                                className="text-gray-400 hover:text-green-600 transition-colors"
+                                title="Rehabilitar familia y todo su contenido"
+                            >
+                                <RotateCcw size={15} />
+                            </button>
+                            <button
+                                onClick={() => onDeleteFamilyHard?.(family)}
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                title="Eliminar definitivamente"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                        </>
                     ) : (
-                        <button
-                            onClick={() => onDeleteFamily(family)}
-                            className="text-gray-400 hover:text-red-500 transition-colors"
-                            title="Deshabilitar"
-                        >
-                            <Trash2 size={15} />
-                        </button>
-                    )}
-                    <button onClick={() => onEditFamily(family)} className="text-gray-500 hover:text-black">
-                        <Pencil size={16} />
-                    </button>
-                    {!isInactive && (
-                        <button onClick={() => onCreateFlavor(family.id)} className="text-purple-600 hover:text-purple-800">
-                            <Plus size={16} />
-                        </button>
+                        <>
+                            <button
+                                onClick={() => onDeleteFamily(family)}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                title="Deshabilitar"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                            <button onClick={() => onEditFamily(family)} className="text-gray-500 hover:text-black">
+                                <Pencil size={16} />
+                            </button>
+                            <button onClick={() => onCreateFlavor(family.id)} className="text-purple-600 hover:text-purple-800">
+                                <Plus size={16} />
+                            </button>
+                        </>
                     )}
                 </td>
 

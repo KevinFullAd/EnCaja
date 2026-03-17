@@ -19,7 +19,7 @@ export default function FlavorRow({
 
     return (
         <>
-            <tr className={`bg-gray-50 transition-opacity ${isInactive ? "opacity-50" : ""}`}>
+            <tr className={`bg-(--app-bg)/80 transition-opacity ${isInactive ? "opacity-50" : ""}`}>
                 <td className="px-20 py-3">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setOpen(!open)}>

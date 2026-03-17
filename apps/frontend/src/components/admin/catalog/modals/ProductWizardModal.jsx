@@ -9,6 +9,7 @@ import {
     addFlavor, removeFlavor, addVariant, removeVariant,
 } from "../helpers/familyForm.helpers";
 import { useDraftStore } from "../../../../store/draftStore";
+import ImageInput from "../../../ui/ImageInput";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -114,7 +115,6 @@ function StepIndicator({ current, isEdit, onGoTo }) {
                 const Icon = step.icon;
                 const done = i < current;
                 const active = i === current;
-                // En edición todos los pasos son navegables
                 const clickable = isEdit && i !== current;
                 return (
                     <div key={i} className="flex items-center">
@@ -169,19 +169,10 @@ function StepProducto({ family, onChange, categories }) {
                 />
             </Field>
             <Field label="Imagen por defecto" hint="se usa si las variantes no tienen imagen propia">
-                <div className="flex gap-2">
-                    <Input
-                        placeholder="https://..."
-                        value={family.imageUrl}
-                        onChange={(e) => set("imageUrl", e.target.value)}
-                    />
-                    {family.imageUrl && (
-                        <img src={family.imageUrl} alt=""
-                            className="w-10 h-10 rounded-lg object-cover border border-(--app-border) flex-shrink-0"
-                            onError={(e) => { e.target.style.display = "none"; }}
-                        />
-                    )}
-                </div>
+                <ImageInput
+                    value={family.imageUrl || null}
+                    onChange={(url) => set("imageUrl", url ?? "")}
+                />
             </Field>
             <Toggle value={family.isActive} onChange={(v) => set("isActive", v)} label="Producto activo (visible en el menú)" />
         </div>
@@ -306,15 +297,8 @@ function StepVariantes({ family, onChange }) {
                                 };
                                 return (
                                     <div key={vi} className="rounded-xl border border-(--app-border) bg-(--app-bg) overflow-hidden">
+                                        {/* Fila principal */}
                                         <div className="flex items-center gap-3 p-3">
-                                            <div className="w-9 h-9 rounded-lg border border-(--app-border) bg-(--app-surface) flex-shrink-0 overflow-hidden flex items-center justify-center">
-                                                {variant.imageUrl ? (
-                                                    <img src={variant.imageUrl} alt="" className="w-full h-full object-cover"
-                                                        onError={(e) => { e.target.style.display = "none"; }} />
-                                                ) : (
-                                                    <span className="text-xs text-(--app-muted) select-none">img</span>
-                                                )}
-                                            </div>
                                             <div className="flex-1 min-w-0">
                                                 <Input
                                                     placeholder={flavor.variants.length === 1 ? "Presentación (opcional)" : "Ej: Simple, Doble..."}
@@ -335,23 +319,21 @@ function StepVariantes({ family, onChange }) {
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="px-3 pb-3 flex items-center gap-2">
-                                            <div className="w-9 flex-shrink-0 text-center">
-                                                <span className="text-xs text-(--app-muted)">🖼</span>
-                                            </div>
-                                            <Input
-                                                placeholder="URL de imagen para esta variante (opcional)"
-                                                value={variant.imageUrl ?? ""}
-                                                onChange={(e) => updateVariant({ imageUrl: e.target.value || null })}
-                                                className="text-xs py-1.5"
+                                        {/* Imagen por variante */}
+                                        <div className="px-3 pb-3">
+                                            <ImageInput
+                                                value={variant.imageUrl || null}
+                                                onChange={(url) => updateVariant({ imageUrl: url })}
                                             />
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
-                        <button onClick={() => onChange(addVariant(family, fi))}
-                            className="w-full py-2 rounded-xl border border-dashed border-(--app-border) text-xs text-(--app-muted) hover:border-purple-400 hover:text-purple-600 transition-all flex items-center justify-center gap-1.5">
+                        <button
+                            onClick={() => onChange(addVariant(family, fi))}
+                            className="w-full py-2 rounded-xl border border-dashed border-(--app-border) text-xs text-(--app-muted) hover:border-purple-400 hover:text-purple-600 transition-all flex items-center justify-center gap-1.5"
+                        >
                             <Plus size={12} /> Agregar variante
                         </button>
                     </div>
@@ -362,11 +344,18 @@ function StepVariantes({ family, onChange }) {
 }
 
 function Resumen({ family, categories }) {
+    const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
     const cat = categories.find((c) => c.id === family.categoryId);
+    const imgSrc = (url) => url
+        ? url.startsWith("http") ? url : `${API_BASE}${url}`
+        : null;
+
     return (
         <div className="rounded-xl border border-(--app-border) bg-(--app-bg) p-4 space-y-3">
             <div className="flex items-center gap-3">
-                {family.imageUrl && <img src={family.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />}
+                {family.imageUrl && (
+                    <img src={imgSrc(family.imageUrl)} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                )}
                 <div>
                     <p className="font-semibold text-(--app-text)">{family.name || "Sin nombre"}</p>
                     <p className="text-xs text-(--app-muted)">{cat?.name ?? "Sin categoría"}</p>
@@ -379,7 +368,7 @@ function Resumen({ family, categories }) {
                         <div className="flex flex-wrap gap-x-3 gap-y-1">
                             {fl.variants.map((v, vi) => (
                                 <div key={vi} className="flex items-center gap-1.5">
-                                    {v.imageUrl && <img src={v.imageUrl} alt="" className="w-5 h-5 rounded object-cover" />}
+                                    {v.imageUrl && <img src={imgSrc(v.imageUrl)} alt="" className="w-5 h-5 rounded object-cover" />}
                                     <span className="text-(--app-muted)">{v.label || "unidad"} {moneyDisplay(v.priceCents)}</span>
                                 </div>
                             ))}
@@ -394,12 +383,7 @@ function Resumen({ family, categories }) {
 // ─── Modal principal ───────────────────────────────────────────────────────
 
 export default function ProductWizardModal({
-    open,
-    onClose,
-    onSave,
-    categories = [],
-    initialData = null,
-    initialStep = 0,   // ← nuevo: permite abrir directo en paso 1 (sabores) o 2 (precios)
+    open, onClose, onSave, categories = [], initialData = null, initialStep = 0,
 }) {
     const isEdit = !!initialData?.id;
     const { draft, saveDraft, clearDraft } = useDraftStore();
@@ -419,7 +403,6 @@ export default function ProductWizardModal({
             setStep(draft.step ?? 0);
         } else {
             setFamily(normalizeFamilyForForm(initialData));
-            // En edición, abrir en el paso que corresponde al contexto
             setStep(isEdit ? (initialStep ?? 0) : 0);
         }
     }, [open]);
@@ -470,12 +453,12 @@ export default function ProductWizardModal({
     }
 
     async function handleSave() {
-        const err = validateStep(step === STEPS.length - 1 ? 2 : step);
-        if (err) return setError(err);
-        // En edición podemos guardar desde cualquier paso
         if (isEdit) {
             const fullErr = validateStep(0) ?? validateStep(2);
             if (fullErr) return setError(fullErr);
+        } else {
+            const err = validateStep(2);
+            if (err) return setError(err);
         }
         setSaving(true);
         setError(null);
@@ -518,9 +501,7 @@ export default function ProductWizardModal({
                                 {isEdit ? `Editando: ${family.name || "producto"}` : "Nuevo producto"}
                             </h2>
                             {isEdit && (
-                                <p className="text-xs text-(--app-muted)">
-                                    Podés navegar entre pasos tocando los indicadores
-                                </p>
+                                <p className="text-xs text-(--app-muted)">Podés navegar entre pasos tocando los indicadores</p>
                             )}
                         </div>
                         <button onClick={handleAttemptClose} className="text-(--app-muted) hover:text-(--app-text) transition-colors text-lg leading-none">×</button>
@@ -555,7 +536,6 @@ export default function ProductWizardModal({
                     )}
 
                     <div className="flex gap-3">
-                        {/* En edición: botón guardar disponible en todos los pasos */}
                         {isEdit ? (
                             <>
                                 {step > 0 && (
@@ -596,7 +576,7 @@ export default function ProductWizardModal({
                                     {saving
                                         ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                                         : isLastStep
-                                            ? <><Check size={14} /> Crear producto</>
+                                            ? <><Check size={14} /> {isEdit ? "Guardar cambios" : "Crear producto"}</>
                                             : <>Siguiente <ChevronRight size={14} /></>
                                     }
                                 </button>

@@ -13,7 +13,7 @@ export default function VariantRow({ variant, onEditVariant, onDeleteVariant, on
     const isInactive = variant.isActive === false;
 
     return (
-        <tr className={`bg-white border-b border-t border-collapse border-(--app-border) hover:bg-(--app-bg) transition-opacity ${isInactive ? "opacity-50" : ""}`}>
+        <tr className={`bg-(--app-bg) border-b border-t border-collapse border-(--app-border) hover:bg-(--app-surface) transition-opacity ${isInactive ? "opacity-50" : ""}`}>
             <td className="px-28 py-2 text-sm">
                 <div className="flex items-center gap-2">
                     <span>{variant.label || variant.slug}</span>

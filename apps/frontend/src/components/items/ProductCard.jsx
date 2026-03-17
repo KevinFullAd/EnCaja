@@ -1,76 +1,65 @@
+// src/components/items/ProductCard.jsx
 import { Plus } from "lucide-react";
-import { useOrderStore } from "../../store/orderStore";
 
-function formatMoneyFromCents(priceCents, currency = "ARS") {
-  if (typeof priceCents !== "number") return "—";
-  const amount = priceCents / 100;
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
+const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
+
+function formatMoney(priceCents, currency = "ARS") {
+    return (priceCents / 100).toLocaleString("es-AR", {
+        style: "currency",
+        currency,
+    });
 }
 
-function formatMoneyFromFloat(price) {
-  if (typeof price !== "number") return "—";
-  // fallback legacy, no recomendado a futuro
-  return "£" + price.toFixed(2).replace(".", ",");
+function resolveUrl(url) {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-export default function ProductCard({ product }) {
-  const add = useOrderStore((s) => s.add);
+export default function ProductCard({ product, onOpen }) {
+    const imageSrc = resolveUrl(product.imageUrl);
 
-  const currency = product.currency ?? "ARS";
+    const minPrice = product.variants?.reduce((min, v) => {
+        if (typeof v.priceCents !== "number") return min;
+        return min === null || v.priceCents < min ? v.priceCents : min;
+    }, null);
 
-  const priceLabel =
-    typeof product.priceCents === "number"
-      ? formatMoneyFromCents(product.priceCents, currency)
-      : formatMoneyFromFloat(product.price);
+    const currency = product.variants?.[0]?.currency ?? "ARS";
 
-  const imageSrc = product.imageUrl ?? product.image;
+    return (
+        <div className="flex flex-col gap-2 group">
+            <button onClick={(e) => onOpen?.(e)} className="text-left">
+                <div className="rounded-2xl overflow-hidden aspect-square bg-gray-100 relative transition-all duration-200 group-hover:shadow-md group-hover:scale-[1.02]">
+                    {imageSrc ? (
+                        <img
+                            src={imageSrc}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-(--app-muted) text-xs">
+                            Sin imagen
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                </div>
+            </button>
 
-  return (
-    <div className="flex flex-col gap-2">
-      <div
-        className={
-          "rounded-2xl overflow-hidden aspect-square flex items-center justify-center " +
-          (product.bg ?? "bg-gray-100")
-        }
-      >
-        <img
-          src={imageSrc}
-          alt={product.name}
-          className="w-full h-full object-cover"
-        />
-      </div>
+            <div className="flex items-end justify-between px-0.5">
+                <div>
+                    <p className="text-sm font-medium text-(--app-text)">{product.name}</p>
+                    <p className="text-sm font-bold text-(--app-text)">
+                        {formatMoney(minPrice, currency)}
+                    </p>
+                </div>
 
-      <div className="flex items-end justify-between px-0.5">
-        <div>
-          <p className="text-sm font-medium text-(--app-text)">{product.name}</p>
-          <p className="text-sm font-bold text-(--app-text)">{priceLabel}</p>
+                <button
+                    onClick={(e) => onOpen?.(e)}
+                    className="w-16 h-7 rounded-full border-2 border-purple-600 flex items-center justify-center transition-all duration-200 hover:bg-purple-600 hover:text-white hover:scale-105 active:scale-95"
+                >
+                    <Plus size={16} strokeWidth={2.5} />
+                </button>
+            </div>
         </div>
-
-        <button
-          onClick={() =>
-            add({
-              id: product.id, // variantId real
-              name: product.name,
-              priceCents:
-                typeof product.priceCents === "number"
-                  ? product.priceCents
-                  : typeof product.price === "number"
-                    ? Math.round(product.price * 100)
-                    : 0,
-              imageUrl: imageSrc,
-            })
-          }
-          className="w-17 h-7 cursor-pointer rounded-full border-2 border-purple-600 flex items-center justify-center hover:bg-purple-50 transition-colors"
-          type="button"
-          aria-label="Add product"
-        >
-          <Plus size={16} strokeWidth={2.5} className="text-purple-600" />
-        </button>
-      </div>
-    </div>
-  );
+    );
 }

@@ -14,7 +14,10 @@ export default function CategoryRow({
     onCreateVariant,
     onEditVariant,
     onDeleteCategory,
+    onDeleteCategoryHard,
+    onRestoreCategory,
     onDeleteFamily,
+    onDeleteFamilyHard,
     onDeleteFlavor,
     onDeleteVariant,
     onRestoreFamily,
@@ -52,28 +55,49 @@ export default function CategoryRow({
                 <td className="px-4 py-4 text-sm">{cat.families.length}</td>
 
                 <td className="px-4 py-4 text-right space-x-3">
-                    <button
-                        onClick={() => onDeleteCategory(cat)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                        title="Eliminar categoría"
-                    >
-                        <Trash2 size={15} />
-                    </button>
-                    <button
-                        onClick={() => onEditCategory(cat)}
-                        className="text-gray-500 hover:text-black transition-colors"
-                        title="Editar categoría"
-                    >
-                        <Pencil size={15} />
-                    </button>
-                    {!isInactive && (
-                        <button
-                            className="inline-flex items-center gap-1 text-sm text-purple-600 hover:text-purple-800"
-                            onClick={() => onCreateFamily(cat.id)}
-                        >
-                            <Plus size={16} />
-                            Familia
-                        </button>
+                    {isInactive ? (
+                        <>
+                            {/* Rehabilitar en cascada */}
+                            <button
+                                onClick={() => onRestoreCategory(cat)}
+                                className="text-gray-400 hover:text-green-600 transition-colors"
+                                title="Rehabilitar categoría y todo su contenido"
+                            >
+                                <RotateCcw size={15} />
+                            </button>
+                            {/* Eliminar definitivamente */}
+                            <button
+                                onClick={() => onDeleteCategoryHard(cat)}
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                title="Eliminar definitivamente"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => onDeleteCategory(cat)}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                title="Deshabilitar categoría"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                            <button
+                                onClick={() => onEditCategory(cat)}
+                                className="text-gray-500 hover:text-black transition-colors"
+                                title="Editar categoría"
+                            >
+                                <Pencil size={15} />
+                            </button>
+                            <button
+                                className="inline-flex items-center gap-1 text-sm text-purple-600 hover:text-purple-800"
+                                onClick={() => onCreateFamily(cat.id)}
+                            >
+                                <Plus size={16} />
+                                Familia
+                            </button>
+                        </>
                     )}
                 </td>
 
@@ -91,6 +115,7 @@ export default function CategoryRow({
                         onCreateVariant={onCreateVariant}
                         onEditVariant={onEditVariant}
                         onDeleteFamily={onDeleteFamily}
+                        onDeleteFamilyHard={onDeleteFamilyHard}
                         onDeleteFlavor={onDeleteFlavor}
                         onDeleteVariant={onDeleteVariant}
                         onRestoreFamily={onRestoreFamily}

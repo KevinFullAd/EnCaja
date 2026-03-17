@@ -17,7 +17,12 @@ async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
     });
     if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+        try {
+            const json = JSON.parse(text);
+            throw new Error(json.message ?? `HTTP ${res.status}`);
+        } catch {
+            throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+        }
     }
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) return res.json();
@@ -58,15 +63,22 @@ export const api = {
         actualizarFamilia(id, payload) {
             return apiFetch(`/api/catalogo/familias/${id}`, { method: "PATCH", body: payload, auth: false });
         },
+
+        // Rehabilitar en cascada
+        rehabilitarCategoria(id) {
+            return apiFetch(`/api/catalogo/categorias/${id}/rehabilitar`, { method: "PATCH", auth: false });
+        },
         rehabilitarFamilia(id) {
-            return apiFetch(`/api/catalogo/familias/${id}`, { method: "PATCH", body: { isActive: true }, auth: false });
+            return apiFetch(`/api/catalogo/familias/${id}/rehabilitar`, { method: "PATCH", auth: false });
         },
         rehabilitarFlavor(id) {
-            return apiFetch(`/api/catalogo/flavors/${id}`, { method: "PATCH", body: { isActive: true }, auth: false });
+            return apiFetch(`/api/catalogo/flavors/${id}/rehabilitar`, { method: "PATCH", auth: false });
         },
         rehabilitarVariant(id) {
-            return apiFetch(`/api/catalogo/variants/${id}`, { method: "PATCH", body: { isActive: true }, auth: false });
+            return apiFetch(`/api/catalogo/variants/${id}/rehabilitar`, { method: "PATCH", auth: false });
         },
+
+        // Soft delete
         eliminarCategoria(id) {
             return apiFetch(`/api/catalogo/categorias/${id}`, { method: "DELETE", auth: false });
         },
@@ -78,6 +90,39 @@ export const api = {
         },
         eliminarVariant(id) {
             return apiFetch(`/api/catalogo/variants/${id}`, { method: "DELETE", auth: false });
+        },
+
+        // Hard delete — elimina definitivamente
+        eliminarCategoriaHard(id) {
+            return apiFetch(`/api/catalogo/categorias/${id}?hard=true`, { method: "DELETE", auth: false });
+        },
+        eliminarFamiliaHard(id) {
+            return apiFetch(`/api/catalogo/familias/${id}?hard=true`, { method: "DELETE", auth: false });
+        },
+        eliminarFlavorHard(id) {
+            return apiFetch(`/api/catalogo/flavors/${id}?hard=true`, { method: "DELETE", auth: false });
+        },
+        eliminarVariantHard(id) {
+            return apiFetch(`/api/catalogo/variants/${id}?hard=true`, { method: "DELETE", auth: false });
+        },
+    },
+
+    uploads: {
+        async imagen(file) {
+            const token = getToken();
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch(`${API_BASE}/api/uploads/imagen`, {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+            });
+            if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                try { const json = JSON.parse(text); throw new Error(json.message ?? `HTTP ${res.status}`); }
+                catch { throw new Error(`HTTP ${res.status}`); }
+            }
+            return res.json();
         },
     },
 

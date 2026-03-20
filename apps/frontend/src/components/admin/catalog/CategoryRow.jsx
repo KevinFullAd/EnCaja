@@ -19,7 +19,9 @@ export default function CategoryRow({
     onDeleteFamily,
     onDeleteFamilyHard,
     onDeleteFlavor,
+    onDeleteFlavorHard,
     onDeleteVariant,
+    onDeleteVariantHard,
     onRestoreFamily,
     onRestoreFlavor,
     onRestoreVariant,
@@ -57,7 +59,6 @@ export default function CategoryRow({
                 <td className="px-4 py-4 text-right space-x-3">
                     {isInactive ? (
                         <>
-                            {/* Rehabilitar en cascada */}
                             <button
                                 onClick={() => onRestoreCategory(cat)}
                                 className="text-gray-400 hover:text-green-600 transition-colors"
@@ -65,9 +66,8 @@ export default function CategoryRow({
                             >
                                 <RotateCcw size={15} />
                             </button>
-                            {/* Eliminar definitivamente */}
                             <button
-                                onClick={() => onDeleteCategoryHard(cat)}
+                                onClick={() => onDeleteCategoryHard?.(cat)}
                                 className="text-gray-400 hover:text-red-600 transition-colors"
                                 title="Eliminar definitivamente"
                             >
@@ -117,7 +117,9 @@ export default function CategoryRow({
                         onDeleteFamily={onDeleteFamily}
                         onDeleteFamilyHard={onDeleteFamilyHard}
                         onDeleteFlavor={onDeleteFlavor}
+                        onDeleteFlavorHard={onDeleteFlavorHard}
                         onDeleteVariant={onDeleteVariant}
+                        onDeleteVariantHard={onDeleteVariantHard}
                         onRestoreFamily={onRestoreFamily}
                         onRestoreFlavor={onRestoreFlavor}
                         onRestoreVariant={onRestoreVariant}

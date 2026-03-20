@@ -19,6 +19,8 @@ function formatMoneyFromCents(priceCents, currency = "ARS") {
 }
 
 export default function OrderItemRow({ item, onInc, onDec }) {
+    console.log("OrderItemRow item:", item);
+
     const priceLabel = formatMoneyFromCents(item.priceCents, item.currency ?? "ARS");
     const imageSrc = resolveUrl(item.imageUrl ?? item.image);
 
@@ -32,7 +34,7 @@ export default function OrderItemRow({ item, onInc, onDec }) {
                         className="w-full h-full object-cover"
                     />
                 ) : (
-                    <div className="w-full h-full bg-(--app-border)/30" />
+                    <div className="w-full h-full bg-(--app-border)" />
                 )}
             </div>
 

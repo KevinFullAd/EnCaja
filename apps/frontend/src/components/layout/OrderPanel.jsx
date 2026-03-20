@@ -1,121 +1,133 @@
+// src/components/layout/OrderPanel.jsx
 import { useMemo } from "react";
 import { useOrderStore } from "../../store/orderStore";
+import { useAuthStore } from "../../store/authStore";
 import OrderItemRow from "../order/OrderItemRow";
-
-const SERVICE_CHARGE_RATE = 0; 
-const FIXED_TAX_CENTS = 0; 
-
-function toCents(value) {
-    if (typeof value !== "number" || Number.isNaN(value)) return 0;
-    return Math.round(value);
-}
-
-function itemUnitPriceCents(it) {
-    if (typeof it?.priceCents === "number") return toCents(it.priceCents);
-    if (typeof it?.basePrice === "number") return toCents(it.basePrice);
-    if (typeof it?.price === "number") return Math.round(it.price * 100);
-    return 0;
-}
-
-function formatMoney(cents, currency = "ARS") {
-    const safe = typeof cents === "number" && !Number.isNaN(cents) ? cents : 0;
-    return new Intl.NumberFormat("es-AR", {
-        style: "currency",
-        currency,
-        minimumFractionDigits: 2,
-    }).format(safe / 100);
-}
+import ConfirmOrderModal from "../modals/ConfirmOrderModal"; 
+import { Loader } from "lucide-react";
+import { itemUnitPriceCents, formatMoney } from "../../lib/money";
 
 export default function OrderPanel() {
     const items = useOrderStore((s) => s.items);
     const inc = useOrderStore((s) => s.inc);
     const dec = useOrderStore((s) => s.dec);
+    const submit = useOrderStore((s) => s.submit);
+    const clear = useOrderStore((s) => s.clear);
+    const submitting = useOrderStore((s) => s.submitting);
+
+    const isConfirmOpen = useOrderStore((s) => s.isConfirmOpen);
+    const openConfirm = useOrderStore((s) => s.openConfirm);
+    const closeConfirm = useOrderStore((s) => s.closeConfirm);
+
+    const lastResult = useOrderStore((s) => s.lastResult);
+    const clearResult = useOrderStore((s) => s.clearResult);
+
+    const user = useAuthStore((s) => s.user);
 
     const currency = items?.[0]?.currency ?? "ARS";
 
-    const { subtotalCents, discountCents, serviceChargeCents, taxCents, totalCents } = useMemo(() => {
-        const subtotal = (items ?? []).reduce((sum, it) => {
-            const unit = itemUnitPriceCents(it);
-            const qty = typeof it?.qty === "number" && it.qty > 0 ? it.qty : 0;
-            return sum + unit * qty;
-        }, 0);
-
-        const discount = 0;
-
-        const serviceCharge = Math.round(subtotal * SERVICE_CHARGE_RATE);
-        const tax = toCents(FIXED_TAX_CENTS);
-
-        const total = Math.max(0, subtotal - discount + serviceCharge + tax);
-
-        return {
-            subtotalCents: subtotal,
-            discountCents: discount,
-            serviceChargeCents: serviceCharge,
-            taxCents: tax,
-            totalCents: total,
-        };
+    const totalCents = useMemo(() => {
+        return items.reduce(
+            (sum, it) => sum + itemUnitPriceCents(it) * it.qty,
+            0
+        );
     }, [items]);
 
+    const initials = user?.displayName
+        ? user.displayName
+              .split(" ")
+              .map((w) => w[0])
+              .join("")
+              .slice(0, 2)
+        : "?";
+
     return (
-        <aside className="shrink-0 bg-(--app-surface) border-l border-(--app-border) flex flex-col min-w-1/4 h-full">
+        <aside className="shrink-0 bg-(--app-surface) border-l border-(--app-border) flex flex-col h-full min-w-1/4">
+            
+            {/* Header */}
             <div className="px-5 pt-5 pb-3">
-                <h2 className="text-lg font-bold text-(--app-text)">Current Order</h2>
+                <h2 className="text-lg font-bold text-(--app-text)">
+                    Pedido actual
+                </h2>
 
                 <div className="flex items-center gap-2 mt-3">
-                    <div className="w-7 h-7 rounded-full bg-(--app-border) flex items-center justify-center">
-                        <span className="text-xs font-medium text-(--app-muted)">AC</span>
+                    <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center">
+                        <span className="text-xs font-medium text-purple-700">
+                            {initials}
+                        </span>
                     </div>
-                    <span className="text-sm font-medium text-(--app-text)">Alejandro Canseco</span>
+
+                    <span className="text-sm font-medium text-(--app-text)">
+                        {user?.displayName ?? "Operario"}
+                    </span>
                 </div>
             </div>
+ 
 
+            {/* Items */}
             <div className="flex-1 overflow-y-auto px-5">
                 {items.length === 0 ? (
-                    <p className="text-sm text-(--app-muted) py-8 text-center">No hay productos agregados</p>
+                    <p className="text-sm text-(--app-muted) py-8 text-center">
+                        No hay productos agregados
+                    </p>
                 ) : (
                     <div className="divide-y divide-(--app-border)">
                         {items.map((it) => (
-                            <OrderItemRow key={it.id} item={it} onInc={inc} onDec={dec} />
+                            <OrderItemRow
+                                key={it.id}
+                                item={it}
+                                onInc={inc}
+                                onDec={dec}
+                            />
                         ))}
                     </div>
                 )}
             </div>
 
+            {/* Footer */}
             <div className="px-5 pb-5 pt-3 border-t border-(--app-border)">
-                <div className="flex flex-col gap-1.5 text-sm">
-                    <div className="flex justify-between text-(--app-muted)">
-                        <span>Subtotal</span>
-                        <span className="text-(--app-text)">{formatMoney(subtotalCents, currency)}</span>
-                    </div>
-
-                    <div className="flex justify-between text-(--app-muted)">
-                        <span>Descuento</span>
-                        <span className="text-(--app-text)">{formatMoney(discountCents, currency)}</span>
-                    </div>
-
-                    <div className="flex justify-between text-(--app-muted)">
-                        <span>Cargo por Servicio</span>
-                        <span className="text-(--app-text)">
-                            0%
-                            {/* {SERVICE_CHARGE_RATE > 0 ? `${Math.round(SERVICE_CHARGE_RATE * 100)}%` : "—"} */}
-                        </span>
-                    </div>
-
-                    <div className="flex justify-between text-(--app-muted)">
-                        <span>Impuesto</span>
-                        <span className="text-(--app-text)">{formatMoney(taxCents, currency)}</span>
-                    </div>
-                </div>
-
                 <div className="flex justify-between items-center mt-3 pt-3 border-t border-(--app-border)">
-                    <span className="text-base font-bold text-(--app-text)">Total</span>
-                    <span className="text-xl font-bold text-(--app-text)">{formatMoney(totalCents, currency)}</span>
+                    <span className="text-base font-bold text-(--app-text)">
+                        Total
+                    </span>
+
+                    <span className="text-xl font-bold text-(--app-text)">
+                        {formatMoney(totalCents, currency)}
+                    </span>
                 </div>
 
-                <button className="w-full mt-4 py-3 bg-(--app-text) text-(--app-surface) font-semibold rounded-xl hover:opacity-90 transition">
-                    Continue
-                </button>
+                <div className="flex gap-2 mt-4">
+                    {items.length > 0 && (
+                        <button
+                            onClick={clear}
+                            disabled={submitting}
+                            className="px-4 py-3 rounded-xl border border-(--app-border) text-sm"
+                        >
+                            Limpiar
+                        </button>
+                    )}
+
+                    <button
+                        onClick={openConfirm}
+                        disabled={items.length === 0 || submitting}
+                        className="flex-1 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2"
+                    >
+                        {submitting ? (
+                            <Loader size={16} className="animate-spin" />
+                        ) : (
+                            "Confirmar pedido"
+                        )}
+                    </button>
+                </div>
             </div>
+
+            <ConfirmOrderModal
+                open={isConfirmOpen}
+                totalCents={totalCents}
+                onClose={closeConfirm}
+                onConfirm={submit}
+                submitting={submitting}
+            />
         </aside>
     );
 }

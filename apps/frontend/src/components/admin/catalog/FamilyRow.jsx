@@ -13,7 +13,9 @@ export default function FamilyRow({
     onDeleteFamily,
     onDeleteFamilyHard,
     onDeleteFlavor,
+    onDeleteFlavorHard,
     onDeleteVariant,
+    onDeleteVariantHard,
     onRestoreFamily,
     onRestoreFlavor,
     onRestoreVariant,
@@ -21,8 +23,7 @@ export default function FamilyRow({
 }) {
     const [open, setOpen] = useState(false);
     const isInactive = family.isActive === false;
-    
-    console.log("onDeleteFamilyHard:", onDeleteFamilyHard);
+
     return (
         <>
             <tr className={`bg-(--app-bg)/40 transition-opacity ${isInactive ? "opacity-50" : ""}`}>
@@ -96,8 +97,10 @@ export default function FamilyRow({
                         onCreateVariant={onCreateVariant}
                         onEditVariant={onEditVariant}
                         onDeleteFlavor={onDeleteFlavor}
+                        onDeleteFlavorHard={onDeleteFlavorHard}
                         onRestoreFlavor={onRestoreFlavor}
                         onDeleteVariant={onDeleteVariant}
+                        onDeleteVariantHard={onDeleteVariantHard}
                         onRestoreVariant={onRestoreVariant}
                         showInactive={showInactive}
                     />

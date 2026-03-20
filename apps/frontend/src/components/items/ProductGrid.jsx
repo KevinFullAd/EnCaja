@@ -102,7 +102,7 @@ export default function ProductGrid({ products }) {
                                 : "opacity-0 scale-95 -translate-y-1 pointer-events-none"
                             }`}
                         >
-                            <div className="rounded-xl border border-(--app-border) bg-white shadow-lg p-1.5">
+                            <div className="rounded-xl border border-(--app-border) bg-(--app-bg) shadow-lg p-1.5">
                                 {p.variants.map((v) => (
                                     <button
                                         key={v.id}
@@ -110,7 +110,7 @@ export default function ProductGrid({ products }) {
                                             e.stopPropagation();
                                             handleAdd(p, v);
                                         }}
-                                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-(--app-text) transition-all duration-150 hover:bg-purple-200 active:scale-[0.98]"
+                                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-(--app-text) transition-all duration-150 hover:bg-purple-200/50 active:scale-[0.98]"
                                     >
                                         <span className="font-medium">{v.label || "Normal"}</span>
                                         <span className="text-xs font-semibold text-(--app-text-muted)">

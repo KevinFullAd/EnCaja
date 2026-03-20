@@ -1,82 +1,63 @@
 // src/modules/usuarios/usuarios.service.ts
-import {
-    Injectable,
-    NotFoundException,
-    ConflictException,
-    BadRequestException,
-} from '@nestjs/common';
-import { PrismaService } from '../../infra/prisma/prisma.service';
-import * as crypto from 'crypto';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from "@nestjs/common";
+import { PrismaService } from "../../infra/prisma/prisma.service";
+import { EventService } from "../events/event.service";
+import * as crypto from "crypto";
+import { CreateUsuarioDto } from "./dto/create-usuario.dto";
+import { UpdateUsuarioDto } from "./dto/update-usuario.dto";
 
 @Injectable()
 export class UsuariosService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma:  PrismaService,
+        private readonly events:  EventService,
+    ) {}
 
     private hashPin(pin: string) {
-        return crypto.createHash('sha256').update(pin).digest('hex');
+        return crypto.createHash("sha256").update(pin).digest("hex");
     }
 
     private async contarAdminsActivos(): Promise<number> {
-        return this.prisma.user.count({
-            where: { role: 'ADMIN', isActive: true },
-        });
+        return this.prisma.user.count({ where: { role: "ADMIN", isActive: true } });
     }
 
     listar() {
         return this.prisma.user.findMany({
             where: { isActive: true },
-            select: {
-                id: true,
-                displayName: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-            },
-            orderBy: { createdAt: 'asc' },
+            select: { id: true, displayName: true, role: true, isActive: true, createdAt: true },
+            orderBy: { createdAt: "asc" },
         });
     }
 
-    async crear(dto: CreateUsuarioDto) {
+    async crear(dto: CreateUsuarioDto, createdByUserId?: string) {
         const pinHash = this.hashPin(dto.pin);
         const existe = await this.prisma.user.findFirst({ where: { pinHash } });
-        if (existe) throw new ConflictException('Ese PIN ya está en uso');
+        if (existe) throw new ConflictException("Ese PIN ya está en uso");
 
-        return this.prisma.user.create({
-            data: {
-                displayName: dto.displayName.trim(),
-                pinHash,
-                role: dto.role ?? 'OPERARIO',
-            },
-            select: {
-                id: true,
-                displayName: true,
-                role: true,
-                createdAt: true,
-            },
+        const user = await this.prisma.user.create({
+            data: { displayName: dto.displayName.trim(), pinHash, role: dto.role ?? "OPERARIO" },
+            select: { id: true, displayName: true, role: true, createdAt: true },
         });
+
+        await this.events.emit({
+            type: "INFO", category: "USERS",
+            message: `Usuario creado: ${user.displayName} (${user.role})`,
+            metadata: { userId: user.id, role: user.role },
+            userId: createdByUserId ?? null,
+        });
+
+        return user;
     }
 
-    async actualizar(id: string, dto: UpdateUsuarioDto) {
+    async actualizar(id: string, dto: UpdateUsuarioDto, updatedByUserId?: string) {
         const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user || !user.isActive) throw new NotFoundException('Usuario no encontrado');
+        if (!user || !user.isActive) throw new NotFoundException("Usuario no encontrado");
 
-        // Protección: si es el único ADMIN activo, no se puede cambiar su rol ni su PIN
-        if (user.role === 'ADMIN') {
+        if (user.role === "ADMIN") {
             const totalAdmins = await this.contarAdminsActivos();
-
             if (totalAdmins === 1) {
-                if (dto.role && dto.role !== 'ADMIN') {
-                    throw new BadRequestException(
-                        'No podés cambiar el rol del único administrador activo del sistema.'
-                    );
-                }
-                if (dto.pin) {
-                    throw new BadRequestException(
-                        'No podés cambiar el PIN del único administrador activo del sistema.'
-                    );
-                }
+                if (dto.role && dto.role !== "ADMIN") throw new BadRequestException("No podés cambiar el rol del único administrador activo del sistema.");
+                if (dto.pin) throw new BadRequestException("No podés cambiar el PIN del único administrador activo del sistema.");
             }
         }
 
@@ -87,37 +68,45 @@ export class UsuariosService {
 
         if (dto.pin) {
             const pinHash = this.hashPin(dto.pin);
-            const colision = await this.prisma.user.findFirst({
-                where: { pinHash, NOT: { id } },
-            });
-            if (colision) throw new ConflictException('Ese PIN ya está en uso');
+            const colision = await this.prisma.user.findFirst({ where: { pinHash, NOT: { id } } });
+            if (colision) throw new ConflictException("Ese PIN ya está en uso");
             data.pinHash = pinHash;
         }
 
-        return this.prisma.user.update({
-            where: { id },
-            data,
-            select: { id: true, displayName: true, role: true, isActive: true },
+        const updated = await this.prisma.user.update({ where: { id }, data, select: { id: true, displayName: true, role: true, isActive: true } });
+
+        // Armar descripción del cambio
+        const changes: string[] = [];
+        if (dto.displayName) changes.push(`nombre → "${dto.displayName.trim()}"`);
+        if (dto.role)        changes.push(`rol → ${dto.role}`);
+        if (dto.pin)         changes.push("PIN actualizado");
+
+        await this.events.emit({
+            type: "INFO", category: "USERS",
+            message: `Usuario ${user.displayName} actualizado: ${changes.join(", ") || "sin cambios visibles"}`,
+            metadata: { targetUserId: id, changes },
+            userId: updatedByUserId ?? null,
         });
+
+        return updated;
     }
 
-    async eliminar(id: string) {
+    async eliminar(id: string, deletedByUserId?: string) {
         const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user) throw new NotFoundException('Usuario no encontrado');
+        if (!user) throw new NotFoundException("Usuario no encontrado");
 
-        // Protección: no se puede eliminar el último ADMIN activo
-        if (user.role === 'ADMIN') {
+        if (user.role === "ADMIN") {
             const totalAdmins = await this.contarAdminsActivos();
-            if (totalAdmins === 1) {
-                throw new BadRequestException(
-                    'No podés eliminar el único administrador activo del sistema.'
-                );
-            }
+            if (totalAdmins === 1) throw new BadRequestException("No podés eliminar el único administrador activo del sistema.");
         }
 
-        return this.prisma.user.update({
-            where: { id },
-            data: { isActive: false },
+        await this.prisma.user.update({ where: { id }, data: { isActive: false } });
+
+        await this.events.emit({
+            type: "WARNING", category: "USERS",
+            message: `Usuario ${user.displayName} eliminado`,
+            metadata: { targetUserId: id, role: user.role },
+            userId: deletedByUserId ?? null,
         });
     }
 }

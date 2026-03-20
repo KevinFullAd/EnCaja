@@ -1,18 +1,24 @@
 {
-    "name": "mi-pos",
+    "name": "encaja",
     "private": true,
     "main": "electron/main.js",
     "scripts": {
         "dev:frontend": "cd frontend && npm run dev",
         "dev:backend": "cd backend && npm run start:dev",
         "dev:electron": "electron .",
-        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:electron\"", 
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:electron\"",
+        "install:all": "cd backend && npm install && cd ../frontend && npm install",
         "build:frontend": "cd frontend && npm run build",
         "build:backend": "cd backend && npm run build",
-        "build": "npm run build:frontend && npm run build:backend"
+        "build": "npm run install:all && npm run build:frontend && npm run build:backend",
+        "migrate": "cd backend && npx prisma migrate deploy",
+        "start:backend": "cd backend && cross-env NODE_ENV=production node dist/main.js",
+        "start": "npm run build && npm run migrate && npm run start:backend",
+        "start:electron": "npm run build && npm run migrate && electron ."
     },
     "devDependencies": {
         "concurrently": "^8.2.2",
+        "cross-env": "^10.1.0",
         "electron": "^29.4.6",
         "wait-on": "^9.0.4"
     }

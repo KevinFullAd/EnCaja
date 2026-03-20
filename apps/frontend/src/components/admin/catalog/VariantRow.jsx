@@ -9,7 +9,14 @@ function moneyARS(value) {
     });
 }
 
-export default function VariantRow({ variant, onEditVariant, onDeleteVariant, onRestoreVariant, showInactive = false }) {
+export default function VariantRow({
+    variant,
+    onEditVariant,
+    onDeleteVariant,
+    onDeleteVariantHard,
+    onRestoreVariant,
+    showInactive = false,
+}) {
     const isInactive = variant.isActive === false;
 
     return (
@@ -29,17 +36,27 @@ export default function VariantRow({ variant, onEditVariant, onDeleteVariant, on
 
             <td className="px-4 text-right space-x-3">
                 {isInactive ? (
-                    <button
-                        onClick={() => onRestoreVariant(variant)}
-                        className="text-gray-400 hover:text-green-600 transition-colors"
-                        title="Rehabilitar"
-                    >
-                        <RotateCcw size={13} />
-                    </button>
+                    <>
+                        <button
+                            onClick={() => onRestoreVariant(variant)}
+                            className="text-gray-400 hover:text-green-600 transition-colors"
+                            title="Rehabilitar variante"
+                        >
+                            <RotateCcw size={13} />
+                        </button>
+                        <button
+                            onClick={() => onDeleteVariantHard?.(variant)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Eliminar definitivamente"
+                        >
+                            <Trash2 size={13} />
+                        </button>
+                    </>
                 ) : (
                     <button
                         onClick={() => onDeleteVariant(variant)}
                         className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="Deshabilitar"
                     >
                         <Trash2 size={13} />
                     </button>

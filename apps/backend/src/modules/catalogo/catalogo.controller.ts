@@ -1,5 +1,7 @@
 // src/modules/catalogo/catalogo.controller.ts
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseBoolPipe } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseBoolPipe, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
+import { JwtAuthGuard } from "../sistema/auth/jwt-auth.guard";
 import { CatalogoService } from "./catalogo.service";
 import { CreateCategoryDto } from "./dto/create-categoria.dto";
 import { CreateProductFamilyDto } from "./dto/create-producto.dto";
@@ -7,9 +9,15 @@ import { UpdateProductFamilyDto } from "./dto/update-producto.dto";
 import { UpdateIsActiveDto } from "./dto/update-catalogo.dto";
 import { UpdateCategoriaDto } from "./dto/update-categoria.dto";
 
+type ReqUser = { userId: string; role: string; displayName: string };
+
+function uid(req: Request): string | undefined {
+    return (req.user as ReqUser)?.userId;
+}
+
 @Controller("api/catalogo")
 export class CatalogoController {
-    constructor(private readonly service: CatalogoService) { }
+    constructor(private readonly service: CatalogoService) {}
 
     // ===== CATEGORIAS =====
 
@@ -19,26 +27,33 @@ export class CatalogoController {
     }
 
     @Post("categorias")
-    crearCategoria(@Body() dto: CreateCategoryDto) {
-        return this.service.crearCategoria(dto);
+    @UseGuards(JwtAuthGuard)
+    crearCategoria(@Body() dto: CreateCategoryDto, @Req() req: Request) {
+        return this.service.crearCategoria(dto, uid(req));
     }
 
     @Patch("categorias/:id")
-    actualizarCategoria(@Param("id") id: string, @Body() dto: UpdateCategoriaDto) {
-        return this.service.actualizarCategoria(id, dto);
+    @UseGuards(JwtAuthGuard)
+    actualizarCategoria(@Param("id") id: string, @Body() dto: UpdateCategoriaDto, @Req() req: Request) {
+        return this.service.actualizarCategoria(id, dto, uid(req));
     }
 
     @Patch("categorias/:id/rehabilitar")
-    rehabilitarCategoria(@Param("id") id: string) {
-        return this.service.rehabilitarCategoria(id);
+    @UseGuards(JwtAuthGuard)
+    rehabilitarCategoria(@Param("id") id: string, @Req() req: Request) {
+        return this.service.rehabilitarCategoria(id, uid(req));
     }
 
     @Delete("categorias/:id")
+    @UseGuards(JwtAuthGuard)
     eliminarCategoria(
         @Param("id") id: string,
+        @Req() req: Request,
         @Query("hard", new ParseBoolPipe({ optional: true })) hard?: boolean,
     ) {
-        return hard ? this.service.eliminarCategoriaHard(id) : this.service.eliminarCategoria(id);
+        return hard
+            ? this.service.eliminarCategoriaHard(id, uid(req))
+            : this.service.eliminarCategoria(id, uid(req));
     }
 
     // ===== FAMILIAS =====
@@ -49,68 +64,87 @@ export class CatalogoController {
     }
 
     @Post("familias")
-    crearFamilia(@Body() dto: CreateProductFamilyDto) {
-        return this.service.crearFamilia(dto);
+    @UseGuards(JwtAuthGuard)
+    crearFamilia(@Body() dto: CreateProductFamilyDto, @Req() req: Request) {
+        return this.service.crearFamilia(dto, uid(req));
     }
 
     @Patch("familias/:id")
-    actualizarFamilia(@Param("id") id: string, @Body() dto: UpdateProductFamilyDto) {
+    @UseGuards(JwtAuthGuard)
+    actualizarFamilia(@Param("id") id: string, @Body() dto: UpdateProductFamilyDto, @Req() req: Request) {
         if (Object.keys(dto).length === 1 && dto.isActive !== undefined) {
             return this.service.actualizarFamiliaIsActive(id, { isActive: dto.isActive });
         }
-        return this.service.actualizarFamilia(id, dto);
+        return this.service.actualizarFamilia(id, dto, uid(req));
     }
 
     @Patch("familias/:id/rehabilitar")
-    rehabilitarFamilia(@Param("id") id: string) {
-        return this.service.rehabilitarFamilia(id);
+    @UseGuards(JwtAuthGuard)
+    rehabilitarFamilia(@Param("id") id: string, @Req() req: Request) {
+        return this.service.rehabilitarFamilia(id, uid(req));
     }
 
     @Delete("familias/:id")
+    @UseGuards(JwtAuthGuard)
     eliminarFamilia(
         @Param("id") id: string,
+        @Req() req: Request,
         @Query("hard", new ParseBoolPipe({ optional: true })) hard?: boolean,
     ) {
-        return hard ? this.service.eliminarFamiliaHard(id) : this.service.eliminarFamilia(id);
+        return hard
+            ? this.service.eliminarFamiliaHard(id, uid(req))
+            : this.service.eliminarFamilia(id, uid(req));
     }
 
     // ===== FLAVORS =====
 
     @Patch("flavors/:id")
-    actualizarFlavor(@Param("id") id: string, @Body() dto: UpdateIsActiveDto) {
+    @UseGuards(JwtAuthGuard)
+    actualizarFlavor(@Param("id") id: string, @Body() dto: UpdateIsActiveDto, @Req() req: Request) {
         return this.service.actualizarFlavor(id, dto);
     }
 
     @Patch("flavors/:id/rehabilitar")
-    rehabilitarFlavor(@Param("id") id: string) {
-        return this.service.rehabilitarFlavor(id);
+    @UseGuards(JwtAuthGuard)
+    rehabilitarFlavor(@Param("id") id: string, @Req() req: Request) {
+        return this.service.rehabilitarFlavor(id, uid(req));
     }
 
     @Delete("flavors/:id")
+    @UseGuards(JwtAuthGuard)
     eliminarFlavor(
         @Param("id") id: string,
+        @Req() req: Request,
         @Query("hard", new ParseBoolPipe({ optional: true })) hard?: boolean,
     ) {
-        return hard ? this.service.eliminarFlavorHard(id) : this.service.eliminarFlavor(id);
+        return hard
+            ? this.service.eliminarFlavorHard(id, uid(req))
+            : this.service.eliminarFlavor(id, uid(req));
     }
 
     // ===== VARIANTS =====
 
     @Patch("variants/:id")
-    actualizarVariant(@Param("id") id: string, @Body() dto: UpdateIsActiveDto) {
+    @UseGuards(JwtAuthGuard)
+    actualizarVariant(@Param("id") id: string, @Body() dto: UpdateIsActiveDto, @Req() req: Request) {
         return this.service.actualizarVariant(id, dto);
     }
 
     @Patch("variants/:id/rehabilitar")
-    rehabilitarVariant(@Param("id") id: string) {
-        return this.service.rehabilitarVariant(id);
+    @UseGuards(JwtAuthGuard)
+    rehabilitarVariant(@Param("id") id: string, @Req() req: Request) {
+        return this.service.rehabilitarVariant(id, uid(req));
     }
 
     @Delete("variants/:id")
+    @UseGuards(JwtAuthGuard)
     eliminarVariant(
         @Param("id") id: string,
+        @Req() req: Request,
         @Query("hard", new ParseBoolPipe({ optional: true })) hard?: boolean,
     ) {
-        return hard ? this.service.eliminarVariantHard(id) : this.service.eliminarVariant(id);
+        return hard
+            ? this.service.eliminarVariantHard(id, uid(req))
+            : this.service.eliminarVariant(id, uid(req));
     }
 }

@@ -1,20 +1,20 @@
+// src/app/layout/Layout.jsx
 import { Outlet } from "react-router-dom";
 import Sidebar from "../../components/layout/Sidebar";
 import StatusBar from "../../components/layout/StatusBar";
-import OrderPanel from "../../components/layout/OrderPanel";
+import NotificationToast from "../../components/ui/NotificationToast" 
 
-export default function Layout() {
+export default function Layout() { 
     return (
-        <div className="flex h-screen bg-(--app-bg) ">
-            <Sidebar />
-            <div className="flex flex-1 flex-col min-w-0">
-                <StatusBar />
-                <div className="overflow-auto">
+        <div className="flex flex-col h-dvh bg-(--app-bg)">
+            <StatusBar />
+            <div className="flex flex-1 min-h-0">
+                <Sidebar />
+                <main className="flex-1 overflow-y-auto">
                     <Outlet />
-                </div>
-            </div>
-
-            <OrderPanel />
+                </main>
+            </div> 
+            <NotificationToast />
         </div>
     );
 }

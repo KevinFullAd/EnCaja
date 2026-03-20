@@ -23,14 +23,12 @@ function slugify(text) {
         .replace(/(^-|-$)/g, "");
 }
 
-// Resuelve URL relativa a absoluta para imágenes subidas localmente
 function resolveImageUrl(url) {
     if (!url) return url;
     if (url.startsWith("http")) return url;
     return `${API_BASE}${url}`;
 }
 
-// Aplica resolveImageUrl a todas las imágenes de las familias
 function resolveImages(families) {
     return (families ?? []).map((fam) => ({
         ...fam,
@@ -101,7 +99,7 @@ export default function AdminCatalog() {
             api.catalog.familias({ includeInactive: showInactive }),
         ]);
         setCategories(cats);
-        setFamilies(resolveImages(fams)); // ← fix imágenes locales
+        setFamilies(resolveImages(fams));
     }
 
     useEffect(() => { refreshCatalog().catch(console.error); }, [showInactive]);
@@ -117,7 +115,7 @@ export default function AdminCatalog() {
     }, [families, searchQuery]);
 
     // =========================
-    // SAVE HANDLERS
+    // SAVE
     // =========================
 
     async function handleSaveCategory(payload) {
@@ -193,51 +191,59 @@ export default function AdminCatalog() {
     }
 
     // =========================
-    // DELETE — soft
+    // SOFT DELETE
     // =========================
 
     const onDeleteCategory = (cat) => askDelete({
-        type: "category", data: { id: cat.id },
         title: `Deshabilitar "${cat.name}"`,
         description: "Se deshabilitarán también todas sus familias, sabores y variantes.",
+        onConfirm: () => api.catalog.eliminarCategoria(cat.id),
         onSuccess: refreshCatalog,
     });
     const onDeleteFamily = (family) => askDelete({
-        type: "family", data: family,
         title: `Deshabilitar "${family.name}"`,
         description: "Se deshabilitarán también todos sus sabores y variantes.",
+        onConfirm: () => api.catalog.eliminarFamilia(family.id),
         onSuccess: refreshCatalog,
     });
     const onDeleteFlavor = (flavor) => askDelete({
-        type: "flavor", data: flavor,
         title: `Deshabilitar sabor "${flavor.nameSuffix || "Default"}"`,
         description: "Se deshabilitarán también todas sus variantes.",
+        onConfirm: () => api.catalog.eliminarFlavor(flavor.id),
         onSuccess: refreshCatalog,
     });
     const onDeleteVariant = (variant) => askDelete({
-        type: "variant", data: variant,
         title: `Deshabilitar variante "${variant.label || variant.slug}"`,
+        onConfirm: () => api.catalog.eliminarVariant(variant.id),
         onSuccess: refreshCatalog,
     });
 
     // =========================
-    // DELETE — hard (definitivo)
+    // HARD DELETE
     // =========================
 
     const onDeleteCategoryHard = (cat) => askDelete({
-        type: "category",
-        data: { id: cat.id },
         title: `Eliminar definitivamente "${cat.name}"`,
         description: "Se eliminará permanentemente con todas sus familias, sabores y variantes. Esta acción no se puede deshacer.",
         onConfirm: () => api.catalog.eliminarCategoriaHard(cat.id),
         onSuccess: refreshCatalog,
     });
     const onDeleteFamilyHard = (family) => askDelete({
-        type: "family",
-        data: family,
         title: `Eliminar definitivamente "${family.name}"`,
         description: "Se eliminará permanentemente con todos sus sabores y variantes. Esta acción no se puede deshacer.",
         onConfirm: () => api.catalog.eliminarFamiliaHard(family.id),
+        onSuccess: refreshCatalog,
+    });
+    const onDeleteFlavorHard = (flavor) => askDelete({
+        title: `Eliminar definitivamente sabor "${flavor.nameSuffix || "Default"}"`,
+        description: "Se eliminará permanentemente con todas sus variantes. Esta acción no se puede deshacer.",
+        onConfirm: () => api.catalog.eliminarFlavorHard(flavor.id),
+        onSuccess: refreshCatalog,
+    });
+    const onDeleteVariantHard = (variant) => askDelete({
+        title: `Eliminar definitivamente variante "${variant.label || variant.slug}"`,
+        description: "Esta acción no se puede deshacer.",
+        onConfirm: () => api.catalog.eliminarVariantHard(variant.id),
         onSuccess: refreshCatalog,
     });
 
@@ -255,10 +261,10 @@ export default function AdminCatalog() {
         }
     }
 
-    const onRestoreCategory = (cat)    => handleRestore(api.catalog.rehabilitarCategoria, cat.id);
-    const onRestoreFamily   = (f)      => handleRestore(api.catalog.rehabilitarFamilia, f.id);
-    const onRestoreFlavor   = (f)      => handleRestore(api.catalog.rehabilitarFlavor, f.id);
-    const onRestoreVariant  = (v)      => handleRestore(api.catalog.rehabilitarVariant, v.id);
+    const onRestoreCategory = (cat) => handleRestore(api.catalog.rehabilitarCategoria, cat.id);
+    const onRestoreFamily   = (f)   => handleRestore(api.catalog.rehabilitarFamilia, f.id);
+    const onRestoreFlavor   = (f)   => handleRestore(api.catalog.rehabilitarFlavor, f.id);
+    const onRestoreVariant  = (v)   => handleRestore(api.catalog.rehabilitarVariant, v.id);
 
     function openProductEditor(family, initialStep = 0) {
         setEditor({ type: "product", data: family, initialStep });
@@ -314,8 +320,7 @@ export default function AdminCatalog() {
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50">
                     <EyeOff size={14} className="text-amber-600 flex-shrink-0" />
                     <p className="text-xs text-amber-700">
-                        Estás viendo elementos deshabilitados. No aparecen en el menú ni en las órdenes.
-                        El ícono <strong>↺</strong> rehabilita, el 🗑 elimina definitivamente.
+                        Estás viendo elementos deshabilitados. <strong>↺</strong> rehabilita en cascada — <strong>🗑</strong> elimina definitivamente.
                     </p>
                 </div>
             )}
@@ -349,7 +354,9 @@ export default function AdminCatalog() {
                 onDeleteFamily={onDeleteFamily}
                 onDeleteFamilyHard={onDeleteFamilyHard}
                 onDeleteFlavor={onDeleteFlavor}
+                onDeleteFlavorHard={onDeleteFlavorHard}
                 onDeleteVariant={onDeleteVariant}
+                onDeleteVariantHard={onDeleteVariantHard}
                 onRestoreFamily={onRestoreFamily}
                 onRestoreFlavor={onRestoreFlavor}
                 onRestoreVariant={onRestoreVariant}

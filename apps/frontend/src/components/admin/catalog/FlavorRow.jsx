@@ -9,8 +9,10 @@ export default function FlavorRow({
     onCreateVariant,
     onEditVariant,
     onDeleteFlavor,
+    onDeleteFlavorHard,
     onRestoreFlavor,
     onDeleteVariant,
+    onDeleteVariantHard,
     onRestoreVariant,
     showInactive = false,
 }) {
@@ -43,28 +45,38 @@ export default function FlavorRow({
 
                 <td className="text-right px-4 space-x-3">
                     {isInactive ? (
-                        <button
-                            onClick={() => onRestoreFlavor(flavor)}
-                            className="text-gray-400 hover:text-green-600 transition-colors"
-                            title="Rehabilitar"
-                        >
-                            <RotateCcw size={14} />
-                        </button>
+                        <>
+                            <button
+                                onClick={() => onRestoreFlavor(flavor)}
+                                className="text-gray-400 hover:text-green-600 transition-colors"
+                                title="Rehabilitar sabor y sus variantes"
+                            >
+                                <RotateCcw size={14} />
+                            </button>
+                            <button
+                                onClick={() => onDeleteFlavorHard?.(flavor)}
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                title="Eliminar definitivamente"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </>
                     ) : (
-                        <button
-                            onClick={() => onDeleteFlavor(flavor)}
-                            className="text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                    <button onClick={() => onEditFlavor(flavor)} className="text-gray-500 hover:text-black">
-                        <Pencil size={16} />
-                    </button>
-                    {!isInactive && (
-                        <button onClick={() => onCreateVariant(flavor.id)} className="text-purple-600 hover:text-purple-800">
-                            <Plus size={16} />
-                        </button>
+                        <>
+                            <button
+                                onClick={() => onDeleteFlavor(flavor)}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                title="Deshabilitar"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                            <button onClick={() => onEditFlavor(flavor)} className="text-gray-500 hover:text-black">
+                                <Pencil size={16} />
+                            </button>
+                            <button onClick={() => onCreateVariant(flavor.id)} className="text-purple-600 hover:text-purple-800">
+                                <Plus size={16} />
+                            </button>
+                        </>
                     )}
                 </td>
 
@@ -78,6 +90,7 @@ export default function FlavorRow({
                         variant={variant}
                         onEditVariant={onEditVariant}
                         onDeleteVariant={onDeleteVariant}
+                        onDeleteVariantHard={onDeleteVariantHard}
                         onRestoreVariant={onRestoreVariant}
                         showInactive={showInactive}
                     />

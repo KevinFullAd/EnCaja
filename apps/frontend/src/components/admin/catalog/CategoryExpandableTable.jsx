@@ -19,7 +19,9 @@ export default function CategoryExpandableTable({
     onDeleteFamily,
     onDeleteFamilyHard,
     onDeleteFlavor,
+    onDeleteFlavorHard,
     onDeleteVariant,
+    onDeleteVariantHard,
     onRestoreFamily,
     onRestoreFlavor,
     onRestoreVariant,
@@ -89,7 +91,9 @@ export default function CategoryExpandableTable({
                                 onDeleteFamily={onDeleteFamily}
                                 onDeleteFamilyHard={onDeleteFamilyHard}
                                 onDeleteFlavor={onDeleteFlavor}
+                                onDeleteFlavorHard={onDeleteFlavorHard}
                                 onDeleteVariant={onDeleteVariant}
+                                onDeleteVariantHard={onDeleteVariantHard}
                                 onRestoreFamily={onRestoreFamily}
                                 onRestoreFlavor={onRestoreFlavor}
                                 onRestoreVariant={onRestoreVariant}

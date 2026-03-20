@@ -1,9 +1,25 @@
 // src/lib/api.js
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
+const API_BASE =
+    window?.electronAPI?.getApiBaseUrl?.() ||
+    import.meta.env.VITE_API_BASE ||
+    "/api";
 
+    
 function getToken() { return localStorage.getItem("encaja_token"); }
 function setToken(token) { localStorage.setItem("encaja_token", token); }
 function clearToken() { localStorage.removeItem("encaja_token"); }
+
+/**
+ * Limpia la sesión cuando el back devuelve 401.
+ * Usa un evento custom para que ProtectedRoute lo maneje
+ * sin causar loops de render.
+ */
+function onUnauthorized() {
+    clearToken();
+    localStorage.removeItem("encaja_auth");
+    // Dispara evento — ProtectedRoute lo escucha y redirige al login
+    window.dispatchEvent(new CustomEvent("encaja:unauthorized"));
+}
 
 async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
     const headers = { "Content-Type": "application/json" };
@@ -11,10 +27,17 @@ async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
         const token = getToken();
         if (token) headers.Authorization = `Bearer ${token}`;
     }
+
     const res = await fetch(`${API_BASE}${path}`, {
         method, headers,
         body: body ? JSON.stringify(body) : undefined,
     });
+
+    if (res.status === 401 && auth) {
+        onUnauthorized();
+        throw new Error("Sesión expirada. Ingresá tu PIN nuevamente.");
+    }
+
     if (!res.ok) {
         const text = await res.text().catch(() => "");
         try {
@@ -24,6 +47,7 @@ async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
             throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
         }
     }
+
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) return res.json();
     return res.text();
@@ -43,68 +67,24 @@ export const api = {
     },
 
     catalog: {
-        categorias({ includeInactive = false } = {}) {
-            const qs = includeInactive ? "?includeInactive=true" : "";
-            return apiFetch(`/api/catalogo/categorias${qs}`, { auth: false });
-        },
-        familias({ includeInactive = false } = {}) {
-            const qs = includeInactive ? "?includeInactive=true" : "";
-            return apiFetch(`/api/catalogo/familias${qs}`, { auth: false });
-        },
-        crearCategoria(payload) {
-            return apiFetch("/api/catalogo/categorias", { method: "POST", body: payload, auth: false });
-        },
-        actualizarCategoria(id, payload) {
-            return apiFetch(`/api/catalogo/categorias/${id}`, { method: "PATCH", body: payload, auth: false });
-        },
-        crearFamilia(payload) {
-            return apiFetch("/api/catalogo/familias", { method: "POST", body: payload, auth: false });
-        },
-        actualizarFamilia(id, payload) {
-            return apiFetch(`/api/catalogo/familias/${id}`, { method: "PATCH", body: payload, auth: false });
-        },
-
-        // Rehabilitar en cascada
-        rehabilitarCategoria(id) {
-            return apiFetch(`/api/catalogo/categorias/${id}/rehabilitar`, { method: "PATCH", auth: false });
-        },
-        rehabilitarFamilia(id) {
-            return apiFetch(`/api/catalogo/familias/${id}/rehabilitar`, { method: "PATCH", auth: false });
-        },
-        rehabilitarFlavor(id) {
-            return apiFetch(`/api/catalogo/flavors/${id}/rehabilitar`, { method: "PATCH", auth: false });
-        },
-        rehabilitarVariant(id) {
-            return apiFetch(`/api/catalogo/variants/${id}/rehabilitar`, { method: "PATCH", auth: false });
-        },
-
-        // Soft delete
-        eliminarCategoria(id) {
-            return apiFetch(`/api/catalogo/categorias/${id}`, { method: "DELETE", auth: false });
-        },
-        eliminarFamilia(id) {
-            return apiFetch(`/api/catalogo/familias/${id}`, { method: "DELETE", auth: false });
-        },
-        eliminarFlavor(id) {
-            return apiFetch(`/api/catalogo/flavors/${id}`, { method: "DELETE", auth: false });
-        },
-        eliminarVariant(id) {
-            return apiFetch(`/api/catalogo/variants/${id}`, { method: "DELETE", auth: false });
-        },
-
-        // Hard delete — elimina definitivamente
-        eliminarCategoriaHard(id) {
-            return apiFetch(`/api/catalogo/categorias/${id}?hard=true`, { method: "DELETE", auth: false });
-        },
-        eliminarFamiliaHard(id) {
-            return apiFetch(`/api/catalogo/familias/${id}?hard=true`, { method: "DELETE", auth: false });
-        },
-        eliminarFlavorHard(id) {
-            return apiFetch(`/api/catalogo/flavors/${id}?hard=true`, { method: "DELETE", auth: false });
-        },
-        eliminarVariantHard(id) {
-            return apiFetch(`/api/catalogo/variants/${id}?hard=true`, { method: "DELETE", auth: false });
-        },
+        categorias({ includeInactive = false } = {}) { return apiFetch(`/api/catalogo/categorias${includeInactive ? "?includeInactive=true" : ""}`, { auth: false }); },
+        familias({ includeInactive = false } = {}) { return apiFetch(`/api/catalogo/familias${includeInactive ? "?includeInactive=true" : ""}`, { auth: false }); },
+        crearCategoria(payload) { return apiFetch("/api/catalogo/categorias", { method: "POST", body: payload }); },
+        actualizarCategoria(id, payload) { return apiFetch(`/api/catalogo/categorias/${id}`, { method: "PATCH", body: payload }); },
+        crearFamilia(payload) { return apiFetch("/api/catalogo/familias", { method: "POST", body: payload }); },
+        actualizarFamilia(id, payload) { return apiFetch(`/api/catalogo/familias/${id}`, { method: "PATCH", body: payload }); },
+        rehabilitarCategoria(id) { return apiFetch(`/api/catalogo/categorias/${id}/rehabilitar`, { method: "PATCH" }); },
+        rehabilitarFamilia(id) { return apiFetch(`/api/catalogo/familias/${id}/rehabilitar`, { method: "PATCH" }); },
+        rehabilitarFlavor(id) { return apiFetch(`/api/catalogo/flavors/${id}/rehabilitar`, { method: "PATCH" }); },
+        rehabilitarVariant(id) { return apiFetch(`/api/catalogo/variants/${id}/rehabilitar`, { method: "PATCH" }); },
+        eliminarCategoria(id) { return apiFetch(`/api/catalogo/categorias/${id}`, { method: "DELETE" }); },
+        eliminarFamilia(id) { return apiFetch(`/api/catalogo/familias/${id}`, { method: "DELETE" }); },
+        eliminarFlavor(id) { return apiFetch(`/api/catalogo/flavors/${id}`, { method: "DELETE" }); },
+        eliminarVariant(id) { return apiFetch(`/api/catalogo/variants/${id}`, { method: "DELETE" }); },
+        eliminarCategoriaHard(id) { return apiFetch(`/api/catalogo/categorias/${id}?hard=true`, { method: "DELETE" }); },
+        eliminarFamiliaHard(id) { return apiFetch(`/api/catalogo/familias/${id}?hard=true`, { method: "DELETE" }); },
+        eliminarFlavorHard(id) { return apiFetch(`/api/catalogo/flavors/${id}?hard=true`, { method: "DELETE" }); },
+        eliminarVariantHard(id) { return apiFetch(`/api/catalogo/variants/${id}?hard=true`, { method: "DELETE" }); },
     },
 
     uploads: {
@@ -117,6 +97,7 @@ export const api = {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
                 body: formData,
             });
+            if (res.status === 401) { onUnauthorized(); throw new Error("Sesión expirada."); }
             if (!res.ok) {
                 const text = await res.text().catch(() => "");
                 try { const json = JSON.parse(text); throw new Error(json.message ?? `HTTP ${res.status}`); }
@@ -137,7 +118,29 @@ export const api = {
         crearComanda(payload) { return apiFetch("/api/comandas", { method: "POST", body: payload }); },
         getById(id) { return apiFetch(`/api/comandas/${id}`); },
         ticket(id) { return apiFetch(`/api/comandas/${id}/ticket`); },
-        print(id, payload) { return apiFetch(`/api/comandas/${id}/print`, { method: "POST", body: payload }); },
+        print(id) { return apiFetch(`/api/comandas/${id}/print`, { method: "POST" }); },
         anular(id, payload) { return apiFetch(`/api/comandas/${id}/anular`, { method: "POST", body: payload }); },
+    },
+
+    reportes: {
+        dashboard() { return apiFetch("/api/reportes/dashboard"); },
+        productosTop(params = {}) {
+            const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null)).toString();
+            return apiFetch(`/api/reportes/productos-top${qs ? "?" + qs : ""}`);
+        },
+        porOperario(params = {}) {
+            const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null)).toString();
+            return apiFetch(`/api/reportes/por-operario${qs ? "?" + qs : ""}`);
+        },
+        comandas(params = {}) {
+            const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== "")).toString();
+            return apiFetch(`/api/reportes/comandas${qs ? "?" + qs : ""}`);
+        },
+        impresion(limit) { return apiFetch(`/api/reportes/impresion${limit ? "?limit=" + limit : ""}`); },
+        reimprimirComanda(id) { return apiFetch(`/api/comandas/${id}/print`, { method: "POST" }); },
+        eventos(params = {}) {
+            const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== "")).toString();
+            return apiFetch(`/api/reportes/eventos${qs ? "?" + qs : ""}`);
+        },
     },
 };

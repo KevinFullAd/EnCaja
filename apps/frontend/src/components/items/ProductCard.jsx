@@ -29,7 +29,7 @@ export default function ProductCard({ product, onOpen }) {
     return (
         <div className="flex flex-col gap-2 group">
             <button onClick={(e) => onOpen?.(e)} className="text-left">
-                <div className="rounded-2xl overflow-hidden aspect-square bg-gray-100 relative transition-all duration-200 group-hover:shadow-md group-hover:scale-[1.02]">
+                <div className="rounded-2xl overflow-hidden aspect-square bg-(--app-bg) relative transition-all duration-200 group-hover:shadow-md group-hover:scale-[1.02]">
                     {imageSrc ? (
                         <img
                             src={imageSrc}

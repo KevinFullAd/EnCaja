@@ -1,17 +1,6 @@
-// src/store/deleteStore.js
 import { create } from "zustand";
 import { api } from "../lib/api";
-
-/*
-  target: null | {
-    type: "category" | "family" | "flavor" | "variant" | "usuario"
-    data: object
-    title: string
-    description?: string
-    onSuccess?: () => void
-    onConfirm?: () => Promise<void>   // override total del confirm si se necesita
-  }
-*/
+import { notify } from "./notifyStore";
 
 export const useDeleteStore = create((set, get) => ({
     target: null,
@@ -33,22 +22,25 @@ export const useDeleteStore = create((set, get) => ({
         set({ loading: true });
 
         try {
-            // Si el target trae su propio handler, lo usamos
             if (target.onConfirm) {
                 await target.onConfirm();
             } else {
                 const { type, data } = target;
+
                 if (type === "category") await api.catalog.eliminarCategoria(data.id);
                 if (type === "family")   await api.catalog.eliminarFamilia(data.id);
                 if (type === "flavor")   await api.catalog.eliminarFlavor(data.id);
                 if (type === "variant")  await api.catalog.eliminarVariant(data.id);
             }
 
+            notify.success("Elemento eliminado correctamente");
+
             target.onSuccess?.();
             set({ target: null });
+
         } catch (e) {
             console.error("deleteStore error:", e);
-            alert(String(e?.message ?? e));
+            notify.error(e?.message ?? "Error al eliminar");
         } finally {
             set({ loading: false });
         }

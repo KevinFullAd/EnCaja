@@ -1,7 +1,25 @@
+// prisma/schema.prisma
+
 enum PrintStatus {
   PENDING
   OK
   ERROR
+}
+
+enum EventType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum EventCategory {
+  ORDER
+  PRINT
+  AUTH
+  CATALOG
+  USERS
+  SYSTEM
 }
 
 generator client {
@@ -13,28 +31,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =========================
+// CATALOGO
+// =========================
+
 model Category {
   id        String   @id @default(cuid())
+  slug      String   @unique
   name      String
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  products Product[]
+  families  ProductFamily[]
 }
 
-model Product {
+model ProductFamily {
   id         String   @id @default(cuid())
   categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  slug       String   @unique
   name       String
-  basePrice  Int      @default(0) // en centavos para evitar floats
+  imageUrl   String?
+  sortOrder  Int      @default(0)
   isActive   Boolean  @default(true)
+  flavors    ProductFlavor[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  category Category @relation(fields: [categoryId], references: [id])
+  @@index([categoryId])
 }
+
+model ProductFlavor {
+  id          String        @id @default(cuid())
+  familyId    String
+  family      ProductFamily @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  slug        String
+  nameSuffix  String        @default("")
+  description String?
+  sortOrder   Int           @default(0)
+  isActive    Boolean       @default(true)
+  variants    ProductVariant[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  @@unique([familyId, slug])
+  @@index([familyId])
+}
+
+model ProductVariant {
+  id         String        @id @default(cuid())
+  flavorId   String
+  flavor     ProductFlavor @relation(fields: [flavorId], references: [id], onDelete: Cascade)
+  slug       String
+  label      String        @default("")
+  priceCents Int
+  currency   String        @default("ARS")
+  imageUrl   String?
+  sortOrder  Int           @default(0)
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  orderItems OrderItem[]
+  @@unique([flavorId, slug])
+  @@index([flavorId])
+}
+
+// =========================
+// USUARIOS / ORDENES
+// =========================
 
 model User {
   id          String   @id @default(cuid())
@@ -49,6 +112,7 @@ model User {
   ordersVoided      Order[]         @relation("OrderVoidedBy")
   ordersLastPrinted Order[]         @relation("OrderLastPrintedBy")
   orderPrintLogs    OrderPrintLog[]
+  systemEvents      SystemEvent[]
 }
 
 enum UserRole {
@@ -64,8 +128,10 @@ model Order {
   createdByUserId String
   createdByUser   User   @relation("OrderCreatedBy", fields: [createdByUserId], references: [id])
 
-  notes String?
-  total Int     @default(0)
+  clientName  String?
+  tableNumber String?
+  notes       String?
+  total       Int     @default(0)
 
   printedAt           DateTime?
   printStatus         PrintStatus @default(PENDING)
@@ -93,14 +159,17 @@ model OrderItem {
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  productId           String? // opcional: si el producto se desactiva/elimina, el snapshot sigue
-  productNameSnapshot String
-  unitPriceSnapshot   Int // centavos
-  quantity            Int
-  subtotalSnapshot    Int // centavos
-  notes               String?
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  itemNameSnapshot  String
+  unitPriceSnapshot Int
+  quantity          Int
+  subtotalSnapshot  Int
+  notes             String?
 
   @@index([orderId])
+  @@index([variantId])
 }
 
 model OrderPrintLog {
@@ -118,4 +187,25 @@ model OrderPrintLog {
 
   @@index([orderId])
   @@index([printedAt])
+}
+
+// =========================
+// SISTEMA DE EVENTOS
+// =========================
+
+model SystemEvent {
+  id        String        @id @default(cuid())
+  type      EventType
+  category  EventCategory
+  message   String
+  metadata  String?       // JSON serializado — SQLite no tiene Json nativo
+  createdAt DateTime      @default(now())
+
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([category])
+  @@index([type])
+  @@index([userId])
 }

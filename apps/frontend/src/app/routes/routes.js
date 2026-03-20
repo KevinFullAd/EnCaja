@@ -1,5 +1,10 @@
+// src/app/routes/routes.js
 export const PATHS = {
-    ITEMS: "/items",
-    USERS: "/users",
-    SETTINGS: "/settings",
+    LOGIN:          "/login",
+    ITEMS:          "/items",
+    USERS:          "/users",
+    SETTINGS:       "/settings",
+    ADMIN_CATALOG:  "/admin/catalog",
+    ADMIN_USERS:    "/admin/users",
+    ADMIN_REPORTES: "/admin/reportes",
 };

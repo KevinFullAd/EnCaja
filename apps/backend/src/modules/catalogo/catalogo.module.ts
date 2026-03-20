@@ -1,3 +1,5 @@
+// src/modules/catalogo/catalogo.module.ts
+
 import { Module } from '@nestjs/common';
 import { CatalogoController } from './catalogo.controller';
 import { CatalogoService } from './catalogo.service';

@@ -1,9 +1,30 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
-
-const isDev = !app.isPackaged;
+const { spawn } = require("child_process");
 
 let mainWindow;
+let backendProcess;
+
+function startBackend() {
+    const backendPath = path.join(__dirname, "../backend");
+
+    backendProcess = spawn("node", ["dist/main.js"], {
+        cwd: backendPath,
+        env: {
+            ...process.env,
+            NODE_ENV: "production",
+        },
+        shell: true,
+    });
+
+    backendProcess.stdout.on("data", (data) => {
+        console.log(`[BACKEND]: ${data}`);
+    });
+
+    backendProcess.stderr.on("data", (data) => {
+        console.error(`[BACKEND ERROR]: ${data}`);
+    });
+}
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -17,26 +38,24 @@ function createWindow() {
         },
     });
 
-    if (isDev) {
-        // Carga Vite dev server
-        mainWindow.loadURL('http://127.0.0.1:5173/');
-        mainWindow.webContents.openDevTools({ mode: "detach" });
-    } else {
-        // Carga build del frontend
-        mainWindow.loadFile(
-            path.join(__dirname, "../frontend/dist/index.html")
-        );
-    }
+    const indexPath = path.join(
+        __dirname,
+        "../frontend/dist/index.html"
+    );
+
+    mainWindow.loadFile(indexPath);
 }
 
-app.whenReady().then(() => {
-    createWindow();
+app.whenReady().then(async () => {
+    startBackend();
 
-    app.on("activate", () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+    // Espera a que backend levante
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    createWindow();
 });
 
 app.on("window-all-closed", () => {
+    if (backendProcess) backendProcess.kill();
     if (process.platform !== "darwin") app.quit();
 });

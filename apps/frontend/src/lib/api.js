@@ -1,6 +1,7 @@
 // src/lib/api.js
-const API_BASE = window?.electronAPI?.getApiBaseUrl?.() || import.meta.env.VITE_API_BASE || "";
-
+const API_BASE = window?.electronAPI?.getApiBaseUrl?.() 
+    || import.meta.env.VITE_API_BASE 
+    || "http://localhost:3000";
     
 function getToken() { return localStorage.getItem("encaja_token"); }
 function setToken(token) { localStorage.setItem("encaja_token", token); }

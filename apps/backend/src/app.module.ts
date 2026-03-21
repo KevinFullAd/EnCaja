@@ -7,10 +7,8 @@ import { CatalogoModule } from "./modules/catalogo/catalogo.module";
 import { ComandasModule } from "./modules/comandas/comandas.module";
 import { UsuariosModule } from "./modules/usuarios/usuarios.module";
 import { UploadsModule }  from "./modules/uploads/upload.module";
-import { ReportesModule } from "./modules/reportes/reportes.module";
-import { DevModule }      from "./modules/dev/dev.module";
-
-const isDev = (process.env.NODE_ENV ?? "development") === "development";
+import { ReportesModule } from "./modules/reportes/reportes.module"; 
+ 
 
 @Module({
     imports: [
@@ -22,7 +20,6 @@ const isDev = (process.env.NODE_ENV ?? "development") === "development";
         UsuariosModule,
         UploadsModule,
         ReportesModule,
-        ...(isDev ? [DevModule] : []),
     ],
 })
 export class AppModule {}

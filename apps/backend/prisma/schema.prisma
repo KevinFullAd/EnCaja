@@ -201,7 +201,7 @@ model SystemEvent {
   type      EventType
   category  EventCategory
   message   String
-  metadata  String? // JSON serializado — SQLite no tiene Json nativo
+  metadata  String?
   createdAt DateTime      @default(now())
 
   userId String?

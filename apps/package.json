@@ -1,13 +1,19 @@
 {
-    "name": "encaja",
+    "name": "encaja-app",
+    "version": "1.0.0",
+    "description": "Sistema POS EnCaja",
+    "author": {
+        "name": "Kevin Paniagua",
+        "email": "paniagua.kevin.damian@gmail.com"
+    },
+    "homepage": "https://github.com/KevinFullAd/EnCaja",
     "private": true,
     "main": "electron/main.js",
     "scripts": {
         "dev:frontend": "cd frontend && npm run dev",
         "dev:backend": "cd backend && npm run start:dev",
-        "dev:electron": "cross-env NODE_ENV=development npx electron .",
+        "dev:electron": "cross-env NODE_ENV=development ELECTRON_DISABLE_SANDBOX=1 npx electron .",
         "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:electron\"",
-        "setup": "npm install && cd backend && npm install && cd ../frontend && npm install",
         "build:frontend": "cd frontend && npm run build",
         "build:backend": "cd backend && npm run build",
         "build": "npm run build:frontend && npm run build:backend",
@@ -15,12 +21,14 @@
         "start:backend": "cd backend && cross-env NODE_ENV=production node dist/src/main.js",
         "start": "npm run migrate && npx electron .",
         "start:web": "npm run migrate && npm run start:backend",
-        "deploy": "npm run build && npm run migrate && npx electron ."
+        "deploy": "npm run build && npm run migrate && npx electron .",
+        "package": "npm run build && electron-builder"
     },
     "devDependencies": {
-        "concurrently": "^8.2.2",
-        "cross-env": "^10.1.0",
-        "electron": "^29.4.6",
-        "wait-on": "^9.0.4"
+        "concurrently": "8.2.2",
+        "cross-env": "10.1.0",
+        "electron": "29.4.6",
+        "electron-builder": "26.8.1",
+        "wait-on": "9.0.4"
     }
 }

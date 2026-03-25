@@ -7,13 +7,12 @@ import { CatalogoModule } from "./modules/catalogo/catalogo.module";
 import { ComandasModule } from "./modules/comandas/comandas.module";
 import { UsuariosModule } from "./modules/usuarios/usuarios.module";
 import { UploadsModule }  from "./modules/uploads/upload.module";
-import { ReportesModule } from "./modules/reportes/reportes.module"; 
- 
+import { ReportesModule } from "./modules/reportes/reportes.module";  
 
 @Module({
     imports: [
         PrismaModule,
-        EventModule,      // Global — disponible en todos los módulos
+        EventModule, 
         SistemaModule,
         CatalogoModule,
         ComandasModule,

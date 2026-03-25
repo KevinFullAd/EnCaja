@@ -1,107 +1,227 @@
-const { app, BrowserWindow, session } = require("electron");
+const { app, BrowserWindow } = require("electron");
+const { spawn, execSync } = require("child_process");
 const path = require("path");
-const { spawn } = require("child_process");
-const http = require("http");
-
-const isDev = process.env.NODE_ENV === "development";
+const fs = require("fs");
 
 let mainWindow;
 let backendProcess;
+let isQuitting = false;
+let restartAttempts = 0;
 
-// ─── Levantar el backend ───────────────────────────────────────────────────
+const MAX_RESTARTS = 5;
+const BACKEND_PORT = 3000;
 
+// =========================
+// ENV
+// =========================
+const isProd = app.isPackaged;
+
+// Linux sandbox
+if (process.platform === "linux") {
+    app.commandLine.appendSwitch("no-sandbox");
+}
+
+// =========================
+// PATHS
+// =========================
+const basePath = isProd
+    ? process.resourcesPath
+    : path.join(__dirname, "..");
+
+const backendPath = path.join(basePath, "backend");
+
+// 🔥 DB en userData (CORRECTO)
+const userDataPath = app.getPath("userData");
+const dbDir = path.join(userDataPath, "data");
+
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const dbPath = path.join(dbDir, "dev.db");
+
+// 🔥 FORZAR DATABASE_URL
+process.env.DATABASE_URL = `file:${dbPath}`;
+
+console.log("[DB PATH]:", process.env.DATABASE_URL);
+
+// =========================
+// MIGRATIONS (solo prod)
+// =========================
+function runMigrations() {
+    if (!isProd) return;
+
+    try {
+        console.log("[DB] ejecutando migraciones...");
+
+        execSync("npx prisma migrate deploy", {
+            cwd: backendPath,
+            stdio: "inherit",
+            env: {
+                ...process.env, // 🔥 IMPORTANTE: pasar env
+            },
+        });
+
+        console.log("[DB] migraciones OK");
+    } catch (err) {
+        console.error("[DB] error en migraciones", err);
+    }
+}
+
+// =========================
+// BACKEND
+// =========================
 function startBackend() {
-    const backendPath = path.resolve(__dirname, "..", "backend");
+    console.log("[BACKEND] iniciando...");
 
     backendProcess = spawn("node", ["dist/src/main.js"], {
         cwd: backendPath,
-        env: { ...process.env, NODE_ENV: "production" },
         shell: true,
+        env: {
+            ...process.env, // 🔥 IMPORTANTE
+        },
     });
 
-    backendProcess.stdout.on("data", (data) => console.log(`[BACKEND]: ${data}`));
-    backendProcess.stderr.on("data", (data) => console.error(`[BACKEND ERROR]: ${data}`));
-    backendProcess.on("exit", (code) => console.log(`[BACKEND] terminó con código ${code}`));
+    backendProcess.stdout.on("data", (data) => {
+        console.log("[BACKEND]:", data.toString());
+    });
+
+    backendProcess.stderr.on("data", (data) => {
+        console.error("[BACKEND ERROR]:", data.toString());
+    });
+
+    backendProcess.on("exit", (code) => {
+        console.log("[BACKEND] murió", code);
+
+        if (isQuitting) return;
+
+        restartAttempts++;
+
+        if (restartAttempts > MAX_RESTARTS) {
+            console.error("[BACKEND] demasiados reinicios, abortando");
+            return;
+        }
+
+        console.log("[BACKEND] reiniciando...");
+        setTimeout(startBackend, 2000);
+    });
 }
 
-// ─── Esperar a que el backend responda ────────────────────────────────────
+// =========================
+// BACKUP
+// =========================
+function backupDatabase() {
+    try {
+        if (!fs.existsSync(dbPath)) return;
 
-function waitForBackend(url, timeout = 30000) {
+        const backupDir = path.join(userDataPath, "backups");
+
+        if (!fs.existsSync(backupDir)) {
+            fs.mkdirSync(backupDir, { recursive: true });
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+        const backupFile = path.join(
+            backupDir,
+            `dev-${timestamp}.db`
+        );
+
+        fs.copyFileSync(dbPath, backupFile);
+
+        console.log("[BACKUP] creado:", backupFile);
+    } catch (err) {
+        console.error("[BACKUP ERROR]:", err);
+    }
+}
+
+// =========================
+// STOP BACKEND
+// =========================
+function stopBackend() {
+    if (!backendProcess) return;
+
+    console.log("[BACKEND] cerrando...");
+
+    try {
+        backendProcess.kill("SIGTERM");
+
+        setTimeout(() => {
+            if (!backendProcess.killed) {
+                backendProcess.kill("SIGKILL");
+            }
+        }, 3000);
+    } catch (err) {
+        console.error("[BACKEND STOP ERROR]:", err);
+    }
+}
+
+// =========================
+// WAIT BACKEND
+// =========================
+function waitForBackend() {
     return new Promise((resolve, reject) => {
+        const http = require("http");
         const start = Date.now();
 
         function check() {
-            http.get(url, (res) => {
-                resolve();
-            }).on("error", () => {
-                if (Date.now() - start > timeout) {
-                    reject(new Error("Backend no respondió a tiempo"));
-                } else {
+            http
+                .get(`http://localhost:${BACKEND_PORT}/api/sistema`, () => {
+                    resolve();
+                })
+                .on("error", () => {
+                    if (Date.now() - start > 60000) {
+                        return reject("Timeout backend");
+                    }
                     setTimeout(check, 500);
-                }
-            });
+                });
         }
 
         check();
     });
 }
 
-// ─── Ventana principal ────────────────────────────────────────────────────
-
-function createWindow() {
+// =========================
+// WINDOW
+// =========================
+async function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 1280,
+        width: 1200,
         height: 800,
-        webPreferences: {
-            preload: path.join(__dirname, "preload.js"),
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: false,
-        },
     });
 
-    if (isDev) {
-        mainWindow.loadURL("http://127.0.0.1:5173/");
-        mainWindow.webContents.openDevTools({ mode: "detach" });
-    } else {
-        mainWindow.loadURL("http://localhost:3000");
+    if (isProd) {
+        runMigrations();
+        startBackend();
+    }
+
+    try {
+        await waitForBackend();
+        await mainWindow.loadURL(`http://localhost:${BACKEND_PORT}`);
+    } catch (err) {
+        console.error("[APP] backend no está corriendo");
+
+        mainWindow.loadURL("data:text/html,<h1>Backend no disponible</h1>");
     }
 }
 
-// ─── Arranque ─────────────────────────────────────────────────────────────
+// =========================
+// APP LIFECYCLE
+// =========================
+app.whenReady().then(createWindow);
 
-app.whenReady().then(async () => {
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-            responseHeaders: {
-                ...details.responseHeaders,
-                "Content-Security-Policy": [
-                    "default-src 'self' http://localhost:3000 http://127.0.0.1:3000 'unsafe-inline' 'unsafe-eval' data: blob:",
-                ],
-            },
-        });
-    });
+app.on("before-quit", () => {
+    console.log("[APP] before quit");
+    isQuitting = true;
 
-    if (!isDev) {
-        startBackend();
-
-        try {
-            console.log("Esperando que el backend arranque...");
-            await waitForBackend("http://localhost:3000/api/catalogo/categorias");
-            console.log("Backend listo");
-        } catch (e) {
-            console.error("El backend no arrancó:", e.message);
-        }
-    }
-
-    createWindow();
-
-    app.on("activate", () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+    backupDatabase();
+    stopBackend();
 });
 
 app.on("window-all-closed", () => {
-    if (backendProcess) backendProcess.kill();
-    if (process.platform !== "darwin") app.quit();
+    app.quit();
+});
+
+app.on("will-quit", () => {
+    stopBackend();
 });

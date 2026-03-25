@@ -15,9 +15,14 @@ pnpm-debug.log*
 !.env.example
 
 # ======================
-# Prisma
+# Prisma / SQLite
 # ======================
-apps/backend/prisma/dev.db
+*.db
+*.db-shm
+*.db-wal
+
+apps/backend/prisma/*.db*
+apps/backend/prisma/data/*.db*
 
 # ======================
 # Build outputs
@@ -26,11 +31,23 @@ dist/
 build/
 .next/
 out/
+release/
+*.asar
+
+# ======================
+# Electron
+# ======================
+dist-electron/
+*.AppImage
+*.deb
+*.rpm
+*.exe
+*.dmg
 
 # ======================
 # Logs
 # ======================
-logs
+logs/
 *.log
 
 # ======================
@@ -44,8 +61,3 @@ Thumbs.db
 # ======================
 .vscode/
 .idea/
-
-# ======================
-# Electron
-# ======================
-release/

@@ -39,6 +39,24 @@ export class PrismaService
         await this.$queryRawUnsafe(`PRAGMA journal_mode = WAL;`);
         await this.$executeRawUnsafe(`PRAGMA synchronous = NORMAL;`);
 
+        // =========================
+        // seed
+        // =========================
+        const userCount = await this.user.count();
+
+        if (userCount === 0) {
+            await this.user.create({
+                data: {
+                    displayName: "Admin",
+                    role: "ADMIN",
+                    pinHash: "1234",
+                },
+            });
+
+            console.log("[SEED] Usuario admin creado");
+        }
+
+
         console.log("[PRISMA] conectado");
     }
 

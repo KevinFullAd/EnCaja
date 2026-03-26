@@ -8,10 +8,10 @@ import * as crypto from "crypto";
 @Injectable()
 export class SistemaService {
     constructor(
-        private readonly prisma:  PrismaService,
-        private readonly jwt:     JwtService,
-        private readonly events:  EventService,
-    ) {}
+        private readonly prisma: PrismaService,
+        private readonly jwt: JwtService,
+        private readonly events: EventService,
+    ) { }
 
     private hashPin(pin: string) {
         return crypto.createHash("sha256").update(pin).digest("hex");
@@ -52,6 +52,15 @@ export class SistemaService {
         return {
             token,
             user: { id: user.id, displayName: user.displayName, role: user.role },
+        };
+    }
+
+    async health() {
+        await this.prisma.$queryRaw`SELECT 1`;
+
+        return {
+            status: "ok",
+            timestamp: new Date().toISOString(),
         };
     }
 }

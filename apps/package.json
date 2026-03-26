@@ -6,36 +6,26 @@
     "name": "Kevin Paniagua",
     "email": "paniagua.kevin.damian@gmail.com"
   },
-  "homepage": "https://github.com/KevinFullAd/EnCaja",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
+    "setup": "npm install && npm run setup:backend && npm run setup:frontend && npm run build",
+    "setup:backend": "cd backend && npm install && npx prisma generate",
+    "setup:frontend": "cd frontend && npm install",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run start:dev",
-
-    "dev:electron": "wait-on http://127.0.0.1:5173 && cross-env NODE_ENV=development ELECTRON_DISABLE_SANDBOX=1 electron .",
-
+    "dev:electron": "wait-on http://127.0.0.1:5173 && electron .",
     "dev": "concurrently -k -n BACKEND,FRONTEND,ELECTRON -c green,blue,yellow \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:electron\"",
-
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
     "build": "npm run build:frontend && npm run build:backend",
-
-    "migrate": "cd backend && npx prisma migrate deploy",
-
-    "start:backend": "cd backend && cross-env NODE_ENV=production node dist/src/main.js",
-
-    "start": "npm run migrate && cross-env NODE_ENV=production electron .",
-
-    "start:web": "npm run migrate && npm run start:backend",
-
-    "deploy": "npm run build && npm run migrate && cross-env NODE_ENV=production electron .",
-
-    "package": "npm run build && electron-builder"
+    "start": "electron .",
+    "start:web": "cd backend && node dist/src/main.js",
+    "package": "npm run clean && npm run build && electron-builder",
+    "clean": "rmdir /s /q dist || echo done"
   },
   "devDependencies": {
     "concurrently": "8.2.2",
-    "cross-env": "10.1.0",
     "electron": "29.4.6",
     "electron-builder": "26.8.1",
     "wait-on": "9.0.4"

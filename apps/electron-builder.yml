@@ -5,19 +5,30 @@ directories:
   output: dist
 
 files:
-  - electron/**
-  - frontend/dist/**
+  - electron/**/*
   - package.json
 
 extraResources:
+  # =========================
+  # BACKEND
+  # =========================
   - from: backend/dist
     to: backend/dist
+
   - from: backend/prisma
     to: backend/prisma
+
   - from: backend/node_modules
     to: backend/node_modules
+
   - from: backend/public
     to: backend/public
+  # =========================
+  # FRONTEND
+  # =========================
+
+  - from: frontend/dist
+    to: frontend/dist
 
 win:
   target: nsis

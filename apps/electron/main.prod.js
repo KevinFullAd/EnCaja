@@ -5,12 +5,7 @@ const fs = require("fs");
 const http = require("http");
 
 let backendProcess = null;
-
 const BACKEND_PORT = 3000;
-
-if (process.platform === "linux") {
-    app.commandLine.appendSwitch("disable-dev-shm-usage");
-}
 
 // ====================================
 // PATHS
@@ -28,7 +23,7 @@ function getFrontendPath() {
 }
 
 // ====================================
-// DB SETUP (ÚNICO LUGAR)
+// ENV + DB
 // ====================================
 function setupEnv() {
     const userData = app.getPath("userData");
@@ -56,32 +51,13 @@ function setupEnv() {
 }
 
 // ====================================
-// PRISMA INIT
-// ====================================
-function initDatabase(backendPath) {
-    return new Promise((resolve, reject) => {
-        const prisma = spawn(
-            process.platform === "win32" ? "npx.cmd" : "npx",
-            ["prisma", "db", "push"],
-            { cwd: backendPath, env: process.env }
-        );
-
-        prisma.on("close", (code) => {
-            if (code === 0) resolve();
-            else reject(new Error("Prisma falló"));
-        });
-
-        prisma.on("error", reject);
-    });
-}
-
-// ====================================
 // BACKEND
 // ====================================
 function startBackend(backendPath) {
     backendProcess = spawn("node", ["dist/src/main.js"], {
         cwd: backendPath,
         env: process.env,
+        stdio: "pipe"
     });
 
     backendProcess.stdout.on("data", (d) =>
@@ -91,18 +67,32 @@ function startBackend(backendPath) {
     backendProcess.stderr.on("data", (d) =>
         process.stderr.write("[BACKEND ERROR] " + d.toString())
     );
+
+    backendProcess.on("close", (code) => {
+        console.log(`[BACKEND] cerrado con código ${code}`);
+    });
 }
 
 // ====================================
 // WAIT BACKEND
 // ====================================
 function waitBackend() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+        let retries = 0;
+
         function check() {
             http
                 .get(`http://localhost:${BACKEND_PORT}/api/sistema/health`, () => resolve())
-                .on("error", () => setTimeout(check, 300));
+                .on("error", () => {
+                    retries++;
+                    if (retries > 50) {
+                        reject(new Error("Backend no respondió"));
+                    } else {
+                        setTimeout(check, 300);
+                    }
+                });
         }
+
         check();
     });
 }
@@ -123,15 +113,37 @@ function createWindow() {
 // BOOTSTRAP
 // ====================================
 async function bootstrap() {
-    const backendPath = getBackendPath();
+    try {
+        const backendPath = getBackendPath();
 
-    setupEnv();
+        setupEnv();
 
-    await initDatabase(backendPath);
-    startBackend(backendPath);
-    await waitBackend();
+        // 🔥 IMPORTANTE: NO correr Prisma en producción
+        if (!app.isPackaged) {
+            console.log("[DEV] Ejecutando prisma db push...");
+            const prisma = spawn(
+                process.platform === "win32" ? "npx.cmd" : "npx",
+                ["prisma", "db", "push"],
+                { cwd: backendPath, env: process.env }
+            );
 
-    createWindow();
+            await new Promise((res, rej) => {
+                prisma.on("close", (code) => {
+                    if (code === 0) res();
+                    else rej(new Error("Prisma falló"));
+                });
+                prisma.on("error", rej);
+            });
+        }
+
+        startBackend(backendPath);
+        await waitBackend();
+
+        createWindow();
+    } catch (err) {
+        console.error("[BOOTSTRAP ERROR]", err);
+        app.quit();
+    }
 }
 
 // ====================================
@@ -140,5 +152,7 @@ async function bootstrap() {
 app.whenReady().then(bootstrap);
 
 app.on("before-quit", () => {
-    if (backendProcess) backendProcess.kill();
+    if (backendProcess) {
+        backendProcess.kill();
+    }
 });

@@ -22,12 +22,13 @@
         "build": "npm run build:frontend && npm run build:backend",
         "start": "electron .",
         "start:web": "cd backend && node dist/src/main.js",
-        "package": " npm run clean && npm run build && electron-builder",
-        "clean": "rimraf dist",
+        "package": "cross-env WIN_CSC_LINK= CSC_LINK= CSC_IDENTITY_AUTO_DISCOVERY=false npm run clean && npm run build && electron-builder",
+        "clean": "kill-port 3000 2>nul || true && rimraf dist",
         "kill:3000": "kill-port 3000"
     },
     "devDependencies": {
         "concurrently": "8.2.2",
+        "cross-env": "^10.1.0",
         "electron": "29.4.6",
         "electron-builder": "26.8.1",
         "kill-port": "^2.0.1",

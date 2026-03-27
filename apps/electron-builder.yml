@@ -3,15 +3,15 @@ productName: EnCaja
 
 directories:
   output: dist
+  buildResources: build
 
 files:
   - electron/**/*
   - package.json
 
+asar: true
+
 extraResources:
-  # =========================
-  # BACKEND
-  # =========================
   - from: backend/dist
     to: backend/dist
 
@@ -23,9 +23,6 @@ extraResources:
 
   - from: backend/public
     to: backend/public
-  # =========================
-  # FRONTEND
-  # =========================
 
   - from: frontend/dist
     to: frontend/dist
@@ -37,8 +34,9 @@ win:
 linux:
   target:
     - deb
+    - AppImage
   category: Utility
-  maintainer: "Kevin Paniagua <paniagua.kevin.damian@gmail.com>"
+  icon: build/icon.png
 
 nsis:
   oneClick: true
@@ -46,3 +44,5 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+
+forceCodeSigning: false
